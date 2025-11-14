@@ -1,15 +1,23 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { auth } from '../firebase';
+// --- MODIFICATION 1: Import ONLY 'auth' from firebase.js ---
+import { auth } from '../firebase'; 
 import {
-  // --- MODIFIED: Changed from signInWithPopup
-  signInWithRedirect, 
-  // ---
+  // --- MODIFICATION 2: REMOVE auth functions from here ---
+  // signInWithPopup, (REMOVED)
+  // signOut as firebaseSignOut, (REMOVED)
+  // onAuthStateChanged, (REMOVED)
+  // createUserWithEmailAndPassword, (REMOVED)
+  // signInWithEmailAndPassword, (REMOVED)
+  // sendPasswordResetEmail (REMOVED)
+  
+  // --- MODIFICATION 3: Import ONLY what's needed for the functions ---
   GoogleAuthProvider,
-  signOut as firebaseSignOut,
-  onAuthStateChanged,
+  onAuthStateChanged,   // We keep this one as it's used differently
+  signOut,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+  signInWithPopup // Re-add functions, but we will call them WITH the auth object
 } from 'firebase/auth';
 import { toast } from 'sonner';
 
@@ -29,8 +37,7 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(null);
 
   useEffect(() => {
-    // onAuthStateChanged will still work perfectly with redirects.
-    // When the user comes back from Google, this listener will fire.
+    // onAuthStateChanged is special, it takes auth as its first argument
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         const idToken = await user.getIdToken();
@@ -49,16 +56,20 @@ export const AuthProvider = ({ children }) => {
   const signInWithGoogle = async () => {
     try {
       const provider = new GoogleAuthProvider();
-      // --- MODIFIED: Use redirect instead of popup ---
-      await signInWithRedirect(auth, provider);
-      // The page will now navigate away. No further code here will run.
-      // The useEffect hook above will handle the login when the user returns.
+      // --- MODIFICATION 4: Call signInWithPopup WITH the auth object ---
+      const result = await signInWithPopup(auth, provider);
+      const idToken = await result.user.getIdToken();
+      setToken(idToken);
+      toast.success('Welcome to Fifth Beryl!');
+      return result.user;
     } catch (error) {
       console.error('Error signing in:', error);
       toast.error(error.message);
       throw error;
     }
   };
+
+  // --- MODIFICATION 5: Pass 'auth' as the first argument to all functions ---
 
   const signInWithEmail = async (email, password) => {
     try {
@@ -99,9 +110,9 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const signOut = async () => {
+  const signOutUser = async () => { // Renamed to avoid conflict
     try {
-      await firebaseSignOut(auth);
+      await signOut(auth); // Use the imported signOut function
       setToken(null);
       toast.success('Signed out successfully');
     } catch (error) {
@@ -119,7 +130,7 @@ export const AuthProvider = ({ children }) => {
     signInWithEmail, 
     registerWithEmail, 
     sendPasswordReset, 
-    signOut
+    signOut: signOutUser // Assign the renamed function
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -160,7 +160,7 @@ const ProductsPage = () => {
               type="text"
               placeholder="Search products..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => setSearchTerm(e.g.target.value)}
               className="pl-10"
               data-testid="search-input"
             />
@@ -188,7 +188,8 @@ const ProductsPage = () => {
         ) : (
           <>
             {/* --- THIS IS THE FIX --- */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-8" data-testid="products-grid">
+            {/* Changed grid-cols-1 to grid-cols-2 */}
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-8" data-testid="products-grid">
               {filteredProducts.map((product, index) => (
                 <motion.div
                   key={product.id}
