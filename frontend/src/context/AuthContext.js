@@ -1,7 +1,9 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { auth } from '../firebase';
 import {
-  signInWithPopup,
+  // --- MODIFIED: Changed from signInWithPopup
+  signInWithRedirect, 
+  // ---
   GoogleAuthProvider,
   signOut as firebaseSignOut,
   onAuthStateChanged,
@@ -27,6 +29,8 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(null);
 
   useEffect(() => {
+    // onAuthStateChanged will still work perfectly with redirects.
+    // When the user comes back from Google, this listener will fire.
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         const idToken = await user.getIdToken();
@@ -45,11 +49,10 @@ export const AuthProvider = ({ children }) => {
   const signInWithGoogle = async () => {
     try {
       const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      const idToken = await result.user.getIdToken();
-      setToken(idToken);
-      toast.success('Welcome to Fifth Beryl!');
-      return result.user;
+      // --- MODIFIED: Use redirect instead of popup ---
+      await signInWithRedirect(auth, provider);
+      // The page will now navigate away. No further code here will run.
+      // The useEffect hook above will handle the login when the user returns.
     } catch (error) {
       console.error('Error signing in:', error);
       toast.error(error.message);
@@ -57,7 +60,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // --- NEW: Email Sign In ---
   const signInWithEmail = async (email, password) => {
     try {
       const result = await signInWithEmailAndPassword(auth, email, password);
@@ -72,7 +74,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // --- NEW: Email Registration ---
   const registerWithEmail = async (email, password) => {
     try {
       const result = await createUserWithEmailAndPassword(auth, email, password);
@@ -87,7 +88,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
   
-  // --- NEW: Password Reset ---
   const sendPasswordReset = async (email) => {
     try {
       await sendPasswordResetEmail(auth, email);
@@ -116,9 +116,9 @@ export const AuthProvider = ({ children }) => {
     token,
     loading,
     signInWithGoogle,
-    signInWithEmail, // <-- NEW
-    registerWithEmail, // <-- NEW
-    sendPasswordReset, // <-- NEW
+    signInWithEmail, 
+    registerWithEmail, 
+    sendPasswordReset, 
     signOut
   };
 

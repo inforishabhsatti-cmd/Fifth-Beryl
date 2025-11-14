@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react'; // <-- Import useEffect
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Navbar from '../components/Navbar';
@@ -12,15 +12,26 @@ import { toast } from 'sonner';
 
 const LoginPage = () => {
   const navigate = useNavigate();
-  const { signInWithGoogle, signInWithEmail, registerWithEmail, sendPasswordReset } = useAuth();
+  // --- MODIFIED: Get 'user' and 'loading' from useAuth ---
+  const { user, loading: authLoading, signInWithGoogle, signInWithEmail, registerWithEmail, sendPasswordReset } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // --- NEW: Redirect user if they are already logged in ---
+  // This handles the user returning from the Google redirect
+  useEffect(() => {
+    if (!authLoading && user) {
+      navigate('/'); // Redirect to home if user is logged in
+    }
+  }, [user, authLoading, navigate]);
+  // --- END NEW ---
+
   const handleGoogleSignIn = async () => {
     try {
       await signInWithGoogle();
-      navigate('/'); // Redirect to home after successful login
+      // --- MODIFIED: Removed navigate('/') ---
+      // The page will redirect, and the useEffect above will handle the return.
     } catch (error) {
       // Error is already toasted in AuthContext
     }
@@ -59,6 +70,18 @@ const LoginPage = () => {
     }
     sendPasswordReset(email);
   };
+
+  // Show spinner while auth is loading
+  if (authLoading) {
+    return (
+        <div className="min-h-screen">
+            <Navbar />
+            <div className="flex justify-center items-center py-20">
+                <div className="spinner" />
+            </div>
+        </div>
+    );
+  }
 
   return (
     <div className="min-h-screen">
