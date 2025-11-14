@@ -524,9 +524,8 @@ async def remove_from_wishlist(product_id: str, user: dict = Depends(verify_fire
 async def root():
     return {"message": "Fifth Beryl API is running"}
 
-# Include the router
-app.include_router(api_router)
-
+# --- THIS IS THE FIX ---
+# Add the CORS middleware BEFORE including the router
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
@@ -534,6 +533,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include the router
+app.include_router(api_router)
+# --- END OF FIX ---
+
 
 logging.basicConfig(
     level=logging.INFO,
