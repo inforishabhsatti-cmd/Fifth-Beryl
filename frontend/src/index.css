@@ -4,12 +4,12 @@
 
 @layer base {
   :root {
-    /* --- THIS IS THE FIX: Set background to stone-100 (beige/gray) --- */
-    --background: 0 0% 96%; 
+    /* --- THIS IS THE FIX: Set background to stone-100 (beige) --- */
+    --background: 240 5.6% 94.9%; /* This is HSL for stone-100 */
     --foreground: 240 10% 3.9%;
-    --card: 0 0% 96%; /* Use beige for cards */
+    --card: 0 0% 100%; /* Keep cards white for contrast */
     --card-foreground: 240 10% 3.9%;
-    --popover: 0 0% 96%; /* Use beige for popovers */
+    --popover: 0 0% 100%; /* Keep popovers white */
     --popover-foreground: 240 10% 3.9%;
     --primary: 240 5.9% 10%;
     --primary-foreground: 0 0% 98%;
@@ -27,13 +27,13 @@
     --radius: 0.5rem;
   }
 
-  /* --- THIS IS THE FIX: Force light beige background always --- */
+  /* We no longer need the .dark class override, but it's harmless */
   .dark {
-    --background: 0 0% 96%; /* stone-100 */
+    --background: 240 5.6% 94.9%; /* This is HSL for stone-100 */
     --foreground: 240 10% 3.9%;
-    --card: 0 0% 96%;
+    --card: 0 0% 100%;
     --card-foreground: 240 10% 3.9%;
-    --popover: 0 0% 96%;
+    --popover: 0 0% 100%;
     --popover-foreground: 240 10% 3.9%;
     --primary: 240 5.9% 10%;
     --primary-foreground: 0 0% 98%;

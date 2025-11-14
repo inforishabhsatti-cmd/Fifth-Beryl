@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect } from 'react';
 
 const ThemeContext = createContext();
 
@@ -11,42 +11,25 @@ export const useTheme = () => {
 };
 
 export const ThemeProvider = ({ children }) => {
-  const [theme, setTheme] = useState('light');
-
-  useEffect(() => {
-    // Load theme from localStorage
-    const savedTheme = localStorage.getItem('rishe-theme');
-    if (savedTheme) {
-      setTheme(savedTheme);
-    } else {
-      // Default to user's system preference
-      const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      setTheme(systemPrefersDark ? 'dark' : 'light');
-    }
-  }, []);
-
+  // We no longer need the 'theme' state or toggle
+  
   useEffect(() => {
     // Apply theme to document
     const root = document.documentElement;
     
-    if (theme === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
+    // --- THIS IS THE FIX ---
+    // Always remove 'dark' and force 'light'
+    root.classList.remove('dark');
+    root.classList.add('light');
     
-    // Save to localStorage
-    localStorage.setItem('rishe-theme', theme);
-  }, [theme]);
-
-  const toggleTheme = () => {
-    setTheme(theme === 'light' ? 'dark' : 'light');
-  };
+    // Save to localStorage to prevent re-load
+    localStorage.setItem('rishe-theme', 'light');
+  }, []); // Run only once on app load
 
   const value = {
-    theme,
-    toggleTheme,
-    isDark: theme === 'dark'
+    theme: 'light',
+    toggleTheme: () => {}, // Empty function, does nothing
+    isDark: false // Always report as not dark
   };
 
   return (
