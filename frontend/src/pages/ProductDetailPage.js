@@ -122,14 +122,12 @@ const ProductDetailPage = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           {/* Images */}
           <div>
-            {/* --- MODIFIED: Added bg-white --- */}
             <motion.div
               initial={{ opacity: 0, x: -30 }}
               animate={{ opacity: 1, x: 0 }}
               className="bg-white rounded-2xl overflow-hidden shadow-lg mb-4"
             >
               <img
-                /* --- MODIFIED: Cloudinary URL and object-contain --- */
                 src={product.images[selectedImage]?.url.replace('/upload/', '/upload/w_800,q_auto,f_auto/') || '/placeholder.jpg'}
                 alt={product.name}
                 className="w-full aspect-square object-contain"
@@ -141,14 +139,12 @@ const ProductDetailPage = () => {
                 <button
                   key={index}
                   onClick={() => setSelectedImage(index)}
-                  /* --- MODIFIED: Added bg-white --- */
                   className={`rounded-lg overflow-hidden border-2 bg-white ${
                     selectedImage === index ? 'border-green-700' : 'border-gray-200'
                   }`}
                   data-testid={`thumbnail-${index}`}
                 >
                   <img 
-                    /* --- MODIFIED: Cloudinary URL and object-contain --- */
                     src={image.url.replace('/upload/', '/upload/w_100,q_auto,f_auto/')} 
                     alt={`${product.name} ${index + 1}`} 
                     className="w-full aspect-square object-contain" 
@@ -180,7 +176,8 @@ const ProductDetailPage = () => {
 
             <p className="text-3xl font-bold text-green-700 mb-6" data-testid="product-price">₹{product.price}</p>
             
-            <p className="text-gray-700 mb-8" data-testid="product-description">{product.description}</p>
+            {/* --- MODIFIED: Added font-serif --- */}
+            <p className="font-serif text-gray-700 mb-8" data-testid="product-description">{product.description}</p>
 
             {/* Color Selection */}
             <div className="mb-6">

@@ -2,13 +2,14 @@ import { motion } from 'framer-motion';
 import { Heart, ShoppingCart, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useTheme } from '../context/ThemeContext';
+// useTheme is no longer needed for styles
+// import { useTheme } from '../context/ThemeContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useAuth } from '../context/AuthContext';
 
 const ProductCard = ({ product, index }) => {
   const navigate = useNavigate();
-  const { isDark } = useTheme();
+  // const { isDark } = useTheme(); // No longer needed
   const [isHovered, setIsHovered] = useState(false);
   const { user } = useAuth();
   const { toggleWishlist, isItemInWishlist, loading: wishlistLoading } = useWishlist();
@@ -48,20 +49,14 @@ const ProductCard = ({ product, index }) => {
           scale: 1.02,
           transition: { duration: 0.3, ease: "easeOut" }
         }}
-        /* --- MODIFIED: Added colored shadow on hover --- */
-        className={`relative overflow-hidden rounded-2xl transition-all duration-500 ${
-          isDark 
-            ? 'bg-gray-800 shadow-xl hover:shadow-2xl hover:shadow-green-500/10' 
-            : 'bg-white shadow-lg hover:shadow-2xl hover:shadow-green-700/20'
-        }`}
+        // --- MODIFIED: Removed dark theme classes ---
+        className={`relative overflow-hidden rounded-2xl transition-all duration-500 bg-white shadow-lg hover:shadow-2xl hover:shadow-green-700/20`}
       >
         {/* Image Container */}
-        {/* --- MODIFIED: Added bg-white to make object-contain look clean --- */}
         <div className="relative overflow-hidden aspect-square bg-white">
           <motion.img
             src={product.images[0]?.url.replace('/upload/', '/upload/w_400,q_auto,f_auto/') || '/placeholder.jpg'}
             alt={product.name}
-            /* --- MODIFIED: Changed object-cover to object-contain --- */
             className="w-full h-full object-contain"
             initial={{ scale: 1 }}
             whileHover={{ scale: 1.1 }}
@@ -128,9 +123,8 @@ const ProductCard = ({ product, index }) => {
         {/* Content */}
         <div className="p-6">
           <motion.h3 
-            className={`text-xl font-semibold mb-2 playfair transition-colors ${
-              isDark ? 'text-white group-hover:text-green-400' : 'text-gray-900 group-hover:text-green-700'
-            }`}
+            // --- MODIFIED: Removed dark theme classes ---
+            className={`text-xl font-semibold mb-2 playfair transition-colors text-gray-900 group-hover:text-green-700`}
             animate={{ 
               scale: isHovered ? 1.02 : 1,
             }}
@@ -139,9 +133,8 @@ const ProductCard = ({ product, index }) => {
             {product.name}
           </motion.h3>
           
-          <p className={`mb-3 line-clamp-2 text-sm transition-colors ${
-            isDark ? 'text-gray-400' : 'text-gray-600'
-          }`}>
+          {/* --- MODIFIED: Added font-serif and removed dark theme classes --- */}
+          <p className={`font-serif mb-3 line-clamp-2 text-sm transition-colors text-gray-600`}>
             {product.description}
           </p>
           
@@ -170,18 +163,16 @@ const ProductCard = ({ product, index }) => {
                 />
               ))}
               {product.variants?.length > 3 && (
-                <div className={`text-xs flex items-center ml-1 ${
-                  isDark ? 'text-gray-400' : 'text-gray-500'
-                }`}>
+                // --- MODIFIED: Removed dark theme classes ---
+                <div className={`text-xs flex items-center ml-1 text-gray-500`}>
                   +{product.variants.length - 3}
                 </div>
               )}
             </div>
           </motion.div>
           
-          <div className={`text-center text-xs mb-4 ${
-            isDark ? 'text-gray-400' : 'text-gray-500'
-          }`}>
+          {/* --- MODIFIED: Removed dark theme classes --- */}
+          <div className={`text-center text-xs mb-4 text-gray-500`}>
             {totalStock > 0 ? `${totalStock} in stock` : 'Out of stock'}
           </div>
           
