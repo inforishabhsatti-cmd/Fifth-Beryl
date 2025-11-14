@@ -187,8 +187,8 @@ const ProductsPage = () => {
           </div>
         ) : (
           <>
-            {/* --- MODIFIED: Changed grid-cols-1 to grid-cols-2 --- */}
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-8" data-testid="products-grid">
+            {/* --- THIS IS THE FIX --- */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-8" data-testid="products-grid">
               {filteredProducts.map((product, index) => (
                 <motion.div
                   key={product.id}
@@ -214,8 +214,7 @@ const ProductsPage = () => {
                     </div>
                     <div className="p-6">
                       <h3 className="text-xl font-semibold mb-2 playfair">{product.name}</h3>
-                      {/* --- MODIFIED: Added font-serif --- */}
-                      <p className="font-serif text-gray-600 mb-3 line-clamp-2">{product.description}</p>
+                      <p className="text-gray-600 mb-3 line-clamp-2">{product.description}</p>
                       <div className="flex justify-between items-center">
                         <span className="text-2xl font-bold text-green-700">₹{product.price}</span>
                         <div className="flex gap-1">

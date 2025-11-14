@@ -4,58 +4,96 @@
 
 @layer base {
   :root {
-    /* --- COLORS CHANGED HERE --- */
-    --background: 60 56% 91%; /* Light Beige #F5F5DC */
-    --foreground: 0 0% 3.9%;
-    --card: 0 0% 100%; /* Kept cards white for contrast */
-    --card-foreground: 0 0% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 120 61% 34%; /* Forest Green */
-    --primary-foreground: 355.7 100% 97.3%;
-    --secondary: 60 30% 96%; /* Lighter beige/gray */
-    --secondary-foreground: 0 0% 9%;
-    --muted: 60 30% 96%; /* Lighter beige/gray */
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 60 30% 96%; /* Lighter beige/gray */
-    --accent-foreground: 0 0% 9%;
+    /* --- THIS IS THE FIX: Set background to stone-100 (beige/gray) --- */
+    --background: 0 0% 96%; 
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 96%; /* Use beige for cards */
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 96%; /* Use beige for popovers */
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 240 5.9% 10%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 120 61% 34%; /* Forest Green */
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 240 5.9% 10%;
     --radius: 0.5rem;
-    /* --- END OF CHANGES --- */
   }
 
+  /* --- THIS IS THE FIX: Force light beige background always --- */
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 120 61% 34%; /* Forest Green */
-    --primary-foreground: 355.7 100% 97.3%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 120 61% 34%; /* Forest Green */
+    --background: 0 0% 96%; /* stone-100 */
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 96%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 96%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 240 5.9% 10%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 240 5.9% 10%;
   }
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
   body {
-    @apply bg-background text-foreground;
+    /* --- THIS IS THE FIX: Set body background to stone-100 --- */
+    @apply bg-stone-100 text-gray-900;
+    font-family: 'Inter', sans-serif;
+  }
+
+  /* --- THIS IS THE FIX: Force light beige on .dark body --- */
+  .dark body {
+    @apply bg-stone-100 text-gray-900;
+  }
+}
+
+/* Custom styles */
+.gradient-text {
+  @apply bg-gradient-to-r from-emerald-600 to-green-800 bg-clip-text text-transparent;
+}
+
+.playfair {
+  font-family: 'Playfair Display', serif;
+}
+
+.glass {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid #d1d5db; /* gray-300 */
+  border-bottom-color: #10b981; /* emerald-500 */
+  border-radius: 50%;
+  display: inline-block;
+  box-sizing: border-box;
+  animation: rotation 1s linear infinite;
+}
+
+@keyframes rotation {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
   }
 }
