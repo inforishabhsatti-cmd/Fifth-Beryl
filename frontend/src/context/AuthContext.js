@@ -2,22 +2,14 @@ import { createContext, useContext, useEffect, useState } from 'react';
 // --- MODIFICATION 1: Import ONLY 'auth' from firebase.js ---
 import { auth } from '../firebase'; 
 import {
-  // --- MODIFICATION 2: REMOVE auth functions from here ---
-  // signInWithPopup, (REMOVED)
-  // signOut as firebaseSignOut, (REMOVED)
-  // onAuthStateChanged, (REMOVED)
-  // createUserWithEmailAndPassword, (REMOVED)
-  // signInWithEmailAndPassword, (REMOVED)
-  // sendPasswordResetEmail (REMOVED)
-  
-  // --- MODIFICATION 3: Import ONLY what's needed for the functions ---
+  // --- MODIFICATION 3: Import 'signInWithRedirect' ---
   GoogleAuthProvider,
-  onAuthStateChanged,   // We keep this one as it's used differently
+  onAuthStateChanged,
   signOut,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
-  signInWithPopup // Re-add functions, but we will call them WITH the auth object
+  signInWithRedirect // <-- CHANGED
 } from 'firebase/auth';
 import { toast } from 'sonner';
 
@@ -56,12 +48,14 @@ export const AuthProvider = ({ children }) => {
   const signInWithGoogle = async () => {
     try {
       const provider = new GoogleAuthProvider();
-      // --- MODIFICATION 4: Call signInWithPopup WITH the auth object ---
-      const result = await signInWithPopup(auth, provider);
-      const idToken = await result.user.getIdToken();
-      setToken(idToken);
-      toast.success('Welcome to Fifth Beryl!');
-      return result.user;
+      // --- MODIFICATION 4: Call signInWithRedirect WITH the auth object ---
+      await signInWithRedirect(auth, provider); // <-- CHANGED
+      
+      // Note: The code below this line (like setting token) won't execute 
+      // immediately because the page is redirecting.
+      // The onAuthStateChanged listener will handle auth persistence 
+      // when the user is redirected back to the app.
+
     } catch (error) {
       console.error('Error signing in:', error);
       toast.error(error.message);
