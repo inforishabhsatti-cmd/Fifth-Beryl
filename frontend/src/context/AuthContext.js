@@ -1,15 +1,14 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-// --- MODIFICATION 1: Import ONLY 'auth' from firebase.js ---
 import { auth } from '../firebase'; 
 import {
-  // --- MODIFICATION 3: Import 'signInWithRedirect' ---
   GoogleAuthProvider,
   onAuthStateChanged,
   signOut,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
-  signInWithRedirect // <-- CHANGED
+  // --- MODIFICATION 1: Import 'signInWithRedirect' instead of 'signInWithPopup' ---
+  signInWithRedirect 
 } from 'firebase/auth';
 import { toast } from 'sonner';
 
@@ -29,7 +28,6 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(null);
 
   useEffect(() => {
-    // onAuthStateChanged is special, it takes auth as its first argument
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         const idToken = await user.getIdToken();
@@ -45,17 +43,15 @@ export const AuthProvider = ({ children }) => {
     return unsubscribe;
   }, []);
 
+  // --- MODIFICATION 2: Update 'signInWithGoogle' to use redirect ---
   const signInWithGoogle = async () => {
     try {
       const provider = new GoogleAuthProvider();
-      // --- MODIFICATION 4: Call signInWithRedirect WITH the auth object ---
-      await signInWithRedirect(auth, provider); // <-- CHANGED
-      
-      // Note: The code below this line (like setting token) won't execute 
-      // immediately because the page is redirecting.
-      // The onAuthStateChanged listener will handle auth persistence 
-      // when the user is redirected back to the app.
-
+      // This will navigate the user away to Google's sign-in page.
+      await signInWithRedirect(auth, provider);
+      // The rest of this function will not run, as the page is changing.
+      // The 'onAuthStateChanged' listener above will handle the user
+      // when they are redirected back to your app.
     } catch (error) {
       console.error('Error signing in:', error);
       toast.error(error.message);
@@ -63,7 +59,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // --- MODIFICATION 5: Pass 'auth' as the first argument to all functions ---
+  // ... (rest of the file is correct)
 
   const signInWithEmail = async (email, password) => {
     try {
@@ -104,9 +100,9 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const signOutUser = async () => { // Renamed to avoid conflict
+  const signOutUser = async () => {
     try {
-      await signOut(auth); // Use the imported signOut function
+      await signOut(auth);
       setToken(null);
       toast.success('Signed out successfully');
     } catch (error) {
@@ -124,7 +120,7 @@ export const AuthProvider = ({ children }) => {
     signInWithEmail, 
     registerWithEmail, 
     sendPasswordReset, 
-    signOut: signOutUser // Assign the renamed function
+    signOut: signOutUser
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
