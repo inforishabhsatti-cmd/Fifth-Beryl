@@ -1,19 +1,23 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
+// Only use analytics if you really need it
+// import { getAnalytics } from "firebase/analytics";
 
-// Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
-  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.REACT_APP_FIREBASE_APP_ID
+  apiKey: "AIzaSyAc2DcOvickOJlyib6IuZGBInE3g8r9880",
+  authDomain: "rishe-store.firebaseapp.com",
+  projectId: "rishe-store",
+  storageBucket: "rishe-store.firebasestorage.app",
+  messagingSenderId: "705418646561",
+  appId: "1:705418646561:web:3e9c8cc7005e557087bf60",
+  // measurementId is not required for auth
+  // measurementId: "G-57CQW0D6NK"
 };
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Export Firebase Auth
+// If you really want analytics and you're in browser-only CRA:
+ // const analytics = getAnalytics(app);
+
 export const auth = getAuth(app);
 export default app;
