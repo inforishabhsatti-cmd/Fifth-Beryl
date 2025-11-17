@@ -1,200 +1,192 @@
-import { useState, useEffect } from 'react'; // <-- Import useEffect
-import { useNavigate, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
+import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Chrome } from 'lucide-react'; // For Google icon
 
-const LoginPage = () => {
-  const navigate = useNavigate();
-  // --- MODIFIED: Get 'user' and 'loading' from useAuth ---
-  const { user, loading: authLoading, signInWithGoogle, signInWithEmail, registerWithEmail, sendPasswordReset } = useAuth();
+export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // --- NEW: Redirect user if they are already logged in ---
-  // This handles the user returning from the Google redirect
-  useEffect(() => {
-    if (!authLoading && user) {
-      navigate('/'); // Redirect to home if user is logged in
+  const { signUp, logIn, signInWithGoogle } = useAuth();
+  const navigate = useNavigate();
+
+  const handleEmailSubmit = async (e, action) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    try {
+      if (action === 'login') {
+        await logIn(email, password);
+      } else {
+        await signUp(email, password);
+      }
+      navigate('/profile'); // Redirect to profile page on success
+    } catch (err) {
+      setError(getFriendlyErrorMessage(err.code));
     }
-  }, [user, authLoading, navigate]);
-  // --- END NEW ---
+    setLoading(false);
+  };
 
   const handleGoogleSignIn = async () => {
+    setError('');
+    setLoading(true);
     try {
       await signInWithGoogle();
-      // --- MODIFIED: Removed navigate('/') ---
-      // The page will redirect, and the useEffect above will handle the return.
-    } catch (error) {
-      // Error is already toasted in AuthContext
+      navigate('/profile'); // Redirect to profile page on success
+    } catch (err) {
+      setError(getFriendlyErrorMessage(err.code));
     }
+    setLoading(false);
   };
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      await signInWithEmail(email, password);
-      navigate('/'); // Redirect to home
-    } catch (error) {
-      // Error is toasted in AuthContext
-    } finally {
-      setLoading(false);
+  // Helper to make Firebase errors user-friendly
+  const getFriendlyErrorMessage = (code) => {
+    switch (code) {
+      case 'auth/invalid-email':
+        return 'Invalid email address format.';
+      case 'auth/user-not-found':
+      case 'auth/wrong-password':
+      case 'auth/invalid-credential':
+        return 'Incorrect email or password.';
+      case 'auth/email-already-in-use':
+        return 'An account with this email already exists.';
+      case 'auth/weak-password':
+        return 'Password must be at least 6 characters long.';
+      default:
+        return 'An unknown error occurred. Please try again.';
     }
   };
-
-  const handleRegister = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      await registerWithEmail(email, password);
-      navigate('/'); // Redirect to home
-    } catch (error) {
-      // Error is toasted in AuthContext
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handlePasswordReset = () => {
-    if (!email) {
-      toast.error('Please enter your email address to reset your password.');
-      return;
-    }
-    sendPasswordReset(email);
-  };
-
-  // Show spinner while auth is loading
-  if (authLoading) {
-    return (
-        <div className="min-h-screen">
-            <Navbar />
-            <div className="flex justify-center items-center py-20">
-                <div className="spinner" />
-            </div>
-        </div>
-    );
-  }
 
   return (
-    <div className="min-h-screen">
-      <Navbar />
-      <div className="flex justify-center items-center py-20">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-md"
-        >
-          <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">Login</TabsTrigger>
-              <TabsTrigger value="register">Register</TabsTrigger>
-            </TabsList>
-            
-            {/* --- LOGIN TAB --- */}
-            <TabsContent value="login">
-              <div className="bg-white rounded-2xl p-8 shadow-lg space-y-6">
-                <form onSubmit={handleLogin} className="space-y-4">
-                  <div>
-                    <Label htmlFor="login-email">Email</Label>
-                    <Input
-                      id="login-email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="you@example.com"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="login-password">Password</Label>
-                    <Input
-                      id="login-password"
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••"
-                      required
-                    />
-                  </div>
-                  <Button type="submit" disabled={loading} className="w-full bg-green-700 hover:bg-green-800">
-                    {loading ? 'Signing in...' : 'Sign In'}
-                  </Button>
-                </form>
-                <div className="text-center">
-                  <Button variant="link" onClick={handlePasswordReset}>
-                    Forgot password?
-                  </Button>
+    <div className="flex items-center justify-center min-h-screen bg-background">
+      <Tabs defaultValue="login" className="w-full max-w-sm">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="login">Login</TabsTrigger>
+          <TabsTrigger value="signup">Sign Up</TabsTrigger>
+        </TabsList>
+        
+        {/* --- LOGIN TAB --- */}
+        <TabsContent value="login">
+          <Card>
+            <form onSubmit={(e) => handleEmailSubmit(e, 'login')}>
+              <CardHeader>
+                <CardTitle>Welcome Back</CardTitle>
+                <CardDescription>
+                  Sign in to your account to continue.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {error && (
+                  <Alert variant="destructive">
+                    <AlertTitle>Error</AlertTitle>
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+                <div className="space-y-2">
+                  <Label htmlFor="login-email">Email</Label>
+                  <Input
+                    id="login-email"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
                 </div>
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-white px-2 text-gray-500">
-                      Or continue with
-                    </span>
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="login-password">Password</Label>
+                  <Input
+                    id="login-password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
                 </div>
-                <Button onClick={handleGoogleSignIn} variant="outline" className="w-full">
+              </CardContent>
+              <CardFooter className="flex flex-col gap-4">
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? 'Signing In...' : 'Sign In'}
+                </Button>
+                <Button
+                  variant="outline"
+                  type="button"
+                  className="w-full"
+                  onClick={handleGoogleSignIn}
+                  disabled={loading}
+                >
+                  <Chrome className="w-4 h-4 mr-2" />
                   Sign In with Google
                 </Button>
-              </div>
-            </TabsContent>
-            
-            {/* --- REGISTER TAB --- */}
-            <TabsContent value="register">
-              <div className="bg-white rounded-2xl p-8 shadow-lg space-y-6">
-                <form onSubmit={handleRegister} className="space-y-4">
-                  <div>
-                    <Label htmlFor="reg-email">Email</Label>
-                    <Input
-                      id="reg-email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="you@example.com"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="reg-password">Password</Label>
-                    <Input
-                      id="reg-password"
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Must be at least 6 characters"
-                      required
-                    />
-                  </div>
-                  <Button type="submit" disabled={loading} className="w-full bg-green-700 hover:bg-green-800">
-                    {loading ? 'Creating account...' : 'Create Account'}
-                  </Button>
-                </form>
-                <p className="px-8 text-center text-sm text-gray-500">
-                  By creating an account, you agree to our
-                  <Link to="#" className="underline underline-offset-4 hover:text-primary">
-                    Terms of Service
-                  </Link>
-                  .
-                </p>
-              </div>
-            </TabsContent>
-          </Tabs>
-        </motion.div>
-      </div>
-      <Footer />
+              </CardFooter>
+            </form>
+          </Card>
+        </TabsContent>
+
+        {/* --- SIGN UP TAB --- */}
+        <TabsContent value="signup">
+          <Card>
+            <form onSubmit={(e) => handleEmailSubmit(e, 'signup')}>
+              <CardHeader>
+                <CardTitle>Create Account</CardTitle>
+                <CardDescription>
+                  Enter your email and password to get started.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {error && (
+                  <Alert variant="destructive">
+                    <AlertTitle>Error</AlertTitle>
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+                <div className="space-y-2">
+                  <Label htmlFor="signup-email">Email</Label>
+                  <Input
+                    id="signup-email"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signup-password">Password</Label>
+                  <Input
+                    id="signup-password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                </div>
+              </CardContent>
+              <CardFooter className="flex flex-col gap-4">
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? 'Creating Account...' : 'Sign Up'}
+                </Button>
+              </CardFooter>
+            </form>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
-};
-
-export default LoginPage;
-
+}

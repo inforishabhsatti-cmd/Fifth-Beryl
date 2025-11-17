@@ -1,127 +1,114 @@
-import { createContext, useContext, useEffect, useState } from 'react';
-import { auth } from '../firebase'; 
+import React, { useContext, useState, useEffect, createContext } from 'react';
+import { auth } from '../firebase';
 import {
-  GoogleAuthProvider,
   onAuthStateChanged,
-  signOut,
+  GoogleAuthProvider,
+  signInWithPopup,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  sendPasswordResetEmail,
-  // --- MODIFICATION 1: Import 'signInWithRedirect' instead of 'signInWithPopup' ---
-  signInWithRedirect 
+  signOut,
 } from 'firebase/auth';
-import { toast } from 'sonner';
+import axios from 'axios';
 
+// Create an Axios instance for your API
+// This is the new, correct line
+const api = axios.create({
+  baseURL: (process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000') + '/api',
+});
+
+// Create the context
 const AuthContext = createContext();
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within AuthProvider');
-  }
-  return context;
-};
+// Create a custom hook to use the context
+export function useAuth() {
+  return useContext(AuthContext);
+}
 
-export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [token, setToken] = useState(null);
+// Create the AuthProvider component
+export function AuthProvider({ children }) {
+  const [currentUser, setCurrentUser] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [loading, setLoading] = useState(true); // App-wide loading state
+
+  // --- AUTH FUNCTIONS ---
+
+  function signUp(email, password) {
+    return createUserWithEmailAndPassword(auth, email, password);
+  }
+
+  function logIn(email, password) {
+    return signInWithEmailAndPassword(auth, email, password);
+  }
+
+  function logOut() {
+    return signOut(auth);
+  }
+
+  function signInWithGoogle() {
+    const provider = new GoogleAuthProvider();
+    return signInWithPopup(auth, provider);
+  }
+
+  // --- SESSION MANAGEMENT EFFECT ---
 
   useEffect(() => {
+    // This listener runs on auth state change (login/logout)
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        const idToken = await user.getIdToken();
-        setToken(idToken);
-        setUser(user);
+        // User is signed in
+        setCurrentUser(user);
+
+        // Get the Firebase token and set it in Axios headers
+        try {
+          const token = await user.getIdToken();
+          api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+
+          // Fetch user profile from your backend
+          const response = await api.get('/profile');
+          
+          // Check if user is an admin
+          const adminEmail = process.env.REACT_APP_ADMIN_EMAIL;
+          if (response.data && response.data.email === adminEmail) {
+            setIsAdmin(true);
+          } else {
+            setIsAdmin(false);
+          }
+
+        } catch (error) {
+          console.error('Failed to fetch user profile:', error);
+          setIsAdmin(false); // Default to not admin on error
+        }
       } else {
-        setUser(null);
-        setToken(null);
+        // User is signed out
+        setCurrentUser(null);
+        setIsAdmin(false);
+        delete api.defaults.headers.common['Authorization'];
       }
+      
+      // Done loading, app can now render
       setLoading(false);
     });
 
+    // Cleanup function
     return unsubscribe;
   }, []);
 
-  // --- MODIFICATION 2: Update 'signInWithGoogle' to use redirect ---
-  const signInWithGoogle = async () => {
-    try {
-      const provider = new GoogleAuthProvider();
-      // This will navigate the user away to Google's sign-in page.
-      await signInWithRedirect(auth, provider);
-      // The rest of this function will not run, as the page is changing.
-      // The 'onAuthStateChanged' listener above will handle the user
-      // when they are redirected back to your app.
-    } catch (error) {
-      console.error('Error signing in:', error);
-      toast.error(error.message);
-      throw error;
-    }
-  };
-
-  // ... (rest of the file is correct)
-
-  const signInWithEmail = async (email, password) => {
-    try {
-      const result = await signInWithEmailAndPassword(auth, email, password);
-      const idToken = await result.user.getIdToken();
-      setToken(idToken);
-      toast.success('Welcome back!');
-      return result.user;
-    } catch (error) {
-      console.error('Error signing in with email:', error);
-      toast.error(error.message);
-      throw error;
-    }
-  };
-
-  const registerWithEmail = async (email, password) => {
-    try {
-      const result = await createUserWithEmailAndPassword(auth, email, password);
-      const idToken = await result.user.getIdToken();
-      setToken(idToken);
-      toast.success('Welcome to Fifth Beryl!');
-      return result.user;
-    } catch (error) {
-      console.error('Error registering:', error);
-      toast.error(error.message);
-      throw error;
-    }
-  };
-  
-  const sendPasswordReset = async (email) => {
-    try {
-      await sendPasswordResetEmail(auth, email);
-      toast.success('Password reset email sent! Please check your inbox.');
-    } catch (error) {
-      console.error('Error sending password reset:', error);
-      toast.error(error.message);
-      throw error;
-    }
-  };
-
-  const signOutUser = async () => {
-    try {
-      await signOut(auth);
-      setToken(null);
-      toast.success('Signed out successfully');
-    } catch (error) {
-      console.error('Error signing out:', error);
-      toast.error('Failed to sign out');
-      throw error;
-    }
-  };
-
+  // The value provided to all children
   const value = {
-    user,
-    token,
+    currentUser,
+    isAdmin,
     loading,
+    api, // Export the Axios instance so other parts of your app can use it
+    signUp,
+    logIn,
+    logOut,
     signInWithGoogle,
-    signInWithEmail, 
-    registerWithEmail, 
-    sendPasswordReset, 
-    signOut: signOutUser
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
+  return (
+    <AuthContext.Provider value={value}>
+      {/* Only render children when auth state is determined */}
+      {!loading && children}
+    </AuthContext.Provider>
+  );
+}
