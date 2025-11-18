@@ -1,36 +1,39 @@
-import React, { useContext, useState, useEffect, createContext } from 'react';
+// src/context/AuthContext.js
+import React, {
+  useContext,
+  useState,
+  useEffect,
+  createContext,
+} from 'react';
 import { auth } from '../firebase';
 import {
   onAuthStateChanged,
   GoogleAuthProvider,
-  signInWithPopup,
+  signInWithRedirect,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
 } from 'firebase/auth';
 import axios from 'axios';
 
-// Create an Axios instance for your API
-// This is the new, correct line
+// Axios instance for your backend
 const api = axios.create({
-  baseURL: (process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000') + '/api',
+  baseURL:
+    (process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000') + '/api',
 });
 
-// Create the context
-const AuthContext = createContext();
+const AuthContext = createContext(null);
 
-// Create a custom hook to use the context
 export function useAuth() {
   return useContext(AuthContext);
 }
 
-// Create the AuthProvider component
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [loading, setLoading] = useState(true); // App-wide loading state
+  const [loading, setLoading] = useState(true); // overall auth loading
 
-  // --- AUTH FUNCTIONS ---
+  // ---- AUTH FUNCTIONS ----
 
   function signUp(email, password) {
     return createUserWithEmailAndPassword(auth, email, password);
@@ -44,61 +47,60 @@ export function AuthProvider({ children }) {
     return signOut(auth);
   }
 
-  function signInWithGoogle() {
+  // Use redirect-based Google sign-in (no popup, no window.close)
+  async function signInWithGoogle() {
     const provider = new GoogleAuthProvider();
-    return signInWithPopup(auth, provider);
+    try {
+      // This causes a full-page redirect to Google. It won't "return" in this session.
+      await signInWithRedirect(auth, provider);
+    } catch (err) {
+      console.error('Firebase Google redirect sign-in error:', err);
+      throw err;
+    }
   }
 
-  // --- SESSION MANAGEMENT EFFECT ---
+  // ---- SESSION MANAGEMENT ----
 
   useEffect(() => {
-    // This listener runs on auth state change (login/logout)
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        // User is signed in
         setCurrentUser(user);
 
-        // Get the Firebase token and set it in Axios headers
         try {
           const token = await user.getIdToken();
           api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
-          // Fetch user profile from your backend
+          // fetch user profile from backend
           const response = await api.get('/profile');
-          
-          // Check if user is an admin
+
           const adminEmail = process.env.REACT_APP_ADMIN_EMAIL;
           if (response.data && response.data.email === adminEmail) {
             setIsAdmin(true);
           } else {
             setIsAdmin(false);
           }
-
         } catch (error) {
-          console.error('Failed to fetch user profile:', error);
-          setIsAdmin(false); // Default to not admin on error
+          console.error('Failed to fetch user profile or set admin:', error);
+          setIsAdmin(false);
         }
       } else {
-        // User is signed out
+        // signed out
         setCurrentUser(null);
         setIsAdmin(false);
         delete api.defaults.headers.common['Authorization'];
       }
-      
-      // Done loading, app can now render
+
       setLoading(false);
     });
 
-    // Cleanup function
     return unsubscribe;
   }, []);
 
-  // The value provided to all children
   const value = {
     currentUser,
     isAdmin,
     loading,
-    api, // Export the Axios instance so other parts of your app can use it
+    api,
     signUp,
     logIn,
     logOut,
@@ -107,7 +109,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={value}>
-      {/* Only render children when auth state is determined */}
+      {/* Only render app once auth state is known */}
       {!loading && children}
     </AuthContext.Provider>
   );
