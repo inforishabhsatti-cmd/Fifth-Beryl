@@ -36,11 +36,22 @@ const buttonVariants = cva(
 
 const Button = React.forwardRef(({ className, variant, size, asChild = false, ...props }, ref) => {
   const Comp = asChild ? Slot : "button"
+  
+  // Re-implemented fix: Check if the custom shutter class is present
+  let additionalClasses = "";
+  if (className && className.includes('btn-secondary')) {
+    // These classes (relative, overflow-hidden, z-10) are MANDATORY for the shutter pseudo-element 
+    // defined in App.css to work, as they establish the containment context.
+    additionalClasses = "relative overflow-hidden z-10";
+  }
+
   return (
     <Comp
-      className={cn(buttonVariants({ variant, size, className }))}
+      // We concatenate the default variants, the user-passed className, and the required additionalClasses
+      className={cn(buttonVariants({ variant, size, className }), additionalClasses)}
       ref={ref}
-      {...props} />
+      {...props} 
+    />
   );
 })
 Button.displayName = "Button"

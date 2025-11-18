@@ -26,17 +26,44 @@
   @apply bg-gray-900 transform -translate-y-0.5 shadow-lg;
 }
 
-/* Secondary: Outline -> Becomes Black on Hover */
+/* Secondary: Outline -> Becomes Black on Hover with SHUTTER EFFECT */
 .btn-secondary {
-  @apply bg-transparent text-black px-8 py-3 font-medium transition-all duration-300;
+  /* Base styles: Outline, Black Text, Sharp Edges */
+  @apply bg-transparent px-8 py-3 font-medium;
+  color: black;
   border: 1px solid black;
   border-radius: 0px;
   letter-spacing: 0.5px;
+  /* Required for Shutter Effect */
+  position: relative; /* Establish context for the pseudo-element */
+  overflow: hidden; /* Hide the shutter until it slides in */
+  z-index: 1; /* Ensure button content is above the shutter */
+  /* Combine all transitions (text color, transform/shadow) */
+  transition: color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease; 
 }
 
-/* The user specifically requested Black BG + White Text on hover */
+/* The Shutter (Pseudo-element that slides in) */
+.btn-secondary::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0; /* Start with 0 width (hidden) */
+  height: 100%;
+  background-color: black;
+  transition: width 0.3s ease; /* Smoothly transition the width for the slide-in */
+  z-index: -1; /* Background layer */
+}
+
+/* On hover: apply lift/shadow, change text color, trigger shutter */
 .btn-secondary:hover {
-  @apply bg-black text-white border-black transform -translate-y-0.5;
+  /* Keep border-black and add back the original transform/shadow lift */
+  @apply border-black transform -translate-y-0.5 shadow-lg;
+  color: white; /* Smoothly transition text color to white */
+}
+
+.btn-secondary:hover::after {
+  width: 100%; /* Shutter slides completely in from left to right */
 }
 
 /* --- CARDS --- */
@@ -52,11 +79,15 @@
   box-shadow: 0 15px 30px rgba(0, 0, 0, 0.08);
 }
 
-/* --- GLASSMORPHISM --- */
+/* --- GLASSMORPHISM (Keeping for other components) --- */
 .glass {
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.85); 
+  backdrop-filter: blur(20px); 
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 0, 0, 0.1); 
+  border-radius: 8px; 
+  padding: 2.5rem; 
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
 }
 
 /* --- LOADING SPINNER --- */
@@ -92,4 +123,79 @@
 .hover-lift:hover {
   transform: translateY(-5px);
   box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+}
+
+/* --- GLOBAL APP CONTENT BLUR FILTERS (Applied in App.js) --- */
+.app-content-blur {
+    /* Set filter transition for smooth blur/unblur */
+    transition: filter 0.8s ease-in-out, opacity 0.5s ease; 
+    filter: blur(8px); /* Blur the underlying app content */
+    pointer-events: none; /* Disable interaction while splash screen is active */
+    opacity: 1; /* Keep content visible for blur effect */
+}
+
+.app-content-unblur {
+    transition: filter 0.5s ease-in-out, opacity 0.5s ease;
+    filter: blur(0);
+    pointer-events: auto;
+    opacity: 1;
+}
+
+/* --- FULL-PAGE SHUTTER SPLASH SCREEN (DOWN-UP WIPE) --- */
+
+/* Base container for the full screen effect (no background, only fade out) */
+.shutter-glass-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 9999;
+    transition: opacity 0.5s ease-out; 
+}
+
+.shutter-glass-container.shutter-fade-out {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* The single shutter panel (CRITICAL: Transparent, slides UP) */
+.shutter-slide-up {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    
+    /* Make the sliding panel transparent to show the blurred background */
+    background-color: transparent !important; 
+    backdrop-filter: none !important; 
+    -webkit-backdrop-filter: none !important;
+
+    /* Center the content horizontally and vertically */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    
+    /* Transition for the slide-up effect */
+    transition: transform 1s cubic-bezier(0.7, 0, 0.3, 1); 
+    transform: translateY(0%);
+}
+
+/* Final position: Slide up and off-screen by 100% of its height */
+.shutter-slide-up.shutter-open {
+    transform: translateY(-100%); 
+}
+
+/* Shutter content - now directly receiving the text/logo */
+.shutter-content {
+    /* Uses flex for centered column stacking */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    width: 90%;
+    max-width: 500px;
+    /* Removed all visual effects (background, padding, etc.) previously from .glass */
 }

@@ -1,9 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, Sparkles } from 'lucide-react';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
 import ProductCard from '../components/ProductCard';
 import { useTheme } from '../context/ThemeContext';
 import axios from 'axios';
@@ -53,8 +50,6 @@ const HomePage = () => {
 
   return (
     <div className={`min-h-screen transition-colors duration-300 bg-white pt-20`}>
-      <Navbar />
-      
       {/* Hero Section */}
       <section 
         ref={heroRef}
@@ -88,39 +83,14 @@ const HomePage = () => {
           <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-black to-gray-900" />
         )}
 
+        {/* Content Overlay - Now COMPLETELY EMPTY, leaving only the video */}
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center mt-16 sm:mt-0">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
           >
-            <div className="flex items-center justify-center gap-2 mb-3 sm:mb-4">
-              <Sparkles className="text-white" size={20} />
-              <span className="text-xs sm:text-sm font-semibold tracking-widest uppercase text-white">
-                Premium Quality
-              </span>
-              <Sparkles className="text-white" size={20} />
-            </div>
-            
-            <h1 className="text-4xl sm:text-6xl lg:text-8xl font-bold mb-4 sm:mb-6 playfair text-white drop-shadow-xl tracking-tight">
-              Fifth Beryl
-            </h1>
-            
-            <p className="text-base sm:text-xl mb-8 sm:mb-10 max-w-xl mx-auto text-white/90 drop-shadow-md font-light leading-relaxed">
-              {landingSettings?.hero_subtitle || "Elevate your style with our premium collection of handcrafted shirts."}
-            </p>
-            
-            <div className="flex gap-3 justify-center">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => navigate('/products')}
-                className="bg-white text-gray-900 px-6 py-3 sm:px-8 sm:py-4 rounded-full font-medium text-sm sm:text-base hover:bg-gray-100 transition-colors shadow-lg flex items-center gap-2"
-              >
-                Shop Collection
-                <ArrowRight size={18} />
-              </motion.button>
-            </div>
+            {/* All previous content (text and button) has been removed. */}
           </motion.div>
         </div>
       </section>
@@ -182,7 +152,7 @@ const HomePage = () => {
         </div>
       </section>
 
-      <Footer />
+      {/* REMOVED: The local <Footer /> component to prevent duplication */}
     </div>
   );
 };
