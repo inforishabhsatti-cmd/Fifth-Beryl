@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
 import './App.css';
+// Contexts
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
@@ -36,44 +37,31 @@ import SplashShutter from './components/SplashShutter';
 function App() {
   const [isShutterLoading, setIsShutterLoading] = useState(true);
 
-  // FIX: Use useEffect to lock/unlock scroll on the body tag
+  // Effect to manage body scroll lock during splash screen
   useEffect(() => {
     if (isShutterLoading) {
-      // Lock scrolling
       document.body.style.overflow = 'hidden';
     } else {
-      // Unlock scrolling
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = '';
     }
-    
-    // Cleanup function to ensure scroll is re-enabled when the component unmounts
+    // Cleanup function
     return () => {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = '';
     };
   }, [isShutterLoading]);
 
-  // Callback function to hide the shutter after the animation completes
-  const handleShutterComplete = () => {
-    setIsShutterLoading(false);
-  };
-
-  // We keep the main app container visible, but blur it and disable interaction while loading
-  const appEffectClass = isShutterLoading 
-    ? 'app-content-blur' 
-    : 'app-content-unblur';
-
   return (
-    <Router>
-      <ThemeProvider>
-        <AuthProvider>
-          <CartProvider>
-            <WishlistProvider>
-              {/* 1. Main App Content - Visible, but blurred if loading */}
-              <div className={`flex flex-col min-h-screen ${appEffectClass}`}>
+    <ThemeProvider>
+      <AuthProvider>
+        <CartProvider>
+          <WishlistProvider>
+            <Router>
+              <div className="relative min-h-screen">
+                
+                {/* 1. Main Application Structure (Always rendered) */}
                 <Navbar />
-                <main className="flex-grow">
+                <main>
                   <Routes>
-                    {/* Public Routes */}
                     <Route path="/" element={<HomePage />} />
                     <Route path="/products" element={<ProductsPage />} />
                     <Route path="/product/:id" element={<ProductDetailPage />} />
@@ -84,31 +72,35 @@ function App() {
                     <Route path="/orders" element={<OrdersPage />} />
                     <Route path="/wishlist" element={<WishlistPage />} />
 
-                    {/* Admin Routes (Protected) */}
-                    <Route element={<AdminRoute />}>
-                      <Route path="/admin" element={<AdminDashboard />} />
-                      <Route path="/admin/products" element={<AdminProducts />} />
-                      <Route path="/admin/orders" element={<AdminOrders />} />
-                      <Route path="/admin/inventory" element={<AdminInventory />} />
-                      <Route path="/admin/analytics" element={<AdminAnalytics />} />
-                      <Route path="/admin/landing-page" element={<AdminLandingPage />} />
+                    {/* Admin Routes */}
+                    <Route path="/admin" element={<AdminRoute />}>
+                      <Route index element={<AdminDashboard />} />
+                      <Route path="products" element={<AdminProducts />} />
+                      <Route path="orders" element={<AdminOrders />} />
+                      <Route path="inventory" element={<AdminInventory />} />
+                      <Route path="analytics" element={<AdminAnalytics />} />
+                      <Route path="landing-page" element={<AdminLandingPage />} />
+                      {/* Catch-all for /admin/* */}
+                      <Route path="*" element={<Navigate to="/admin" />} />
                     </Route>
 
-                    {/* Fallback Route */}
-                    <Route path="*" element={<Navigate to="/" replace />} />
+                    {/* Catch-all route */}
+                    <Route path="*" element={<Navigate to="/" />} />
                   </Routes>
                 </main>
                 <Footer />
-                <Toaster />
-              </div>
 
-              {/* 2. Splash Screen - Rendered only when loading, floating above the blurred app */}
-              {isShutterLoading && <SplashShutter onComplete={handleShutterComplete} />}
-            </WishlistProvider>
-          </CartProvider>
-        </AuthProvider>
-      </ThemeProvider>
-    </Router>
+                {/* 2. Splash Screen Overlay (Renders on top if loading) */}
+                {isShutterLoading && (
+                  <SplashShutter onComplete={() => setIsShutterLoading(false)} />
+                )}
+              </div>
+            </Router>
+            <Toaster />
+          </WishlistProvider>
+        </CartProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 
