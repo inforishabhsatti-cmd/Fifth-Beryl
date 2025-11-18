@@ -9,7 +9,7 @@ import { Button } from '../../components/ui/button';
 import { Progress } from '../../components/ui/progress';
 
 const AdminInventory = () => {
-  const { api } = useAuth(); // Use 'api'
+  const { api } = useAuth();
   const [inventory, setInventory] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -29,7 +29,7 @@ const AdminInventory = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white pt-24"> {/* FIX: Added pt-24 to clear navbar */}
       <Navbar />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -61,7 +61,8 @@ const AdminInventory = () => {
                 <tbody>
                   {inventory.map((item, index) => {
                     const status = item.total_stock === 0 ? 'Out of Stock' : item.total_stock < 10 ? 'Low Stock' : 'In Stock';
-                    const statusColor = item.total_stock === 0 ? 'bg-gray-200 text-gray-600' : item.total_stock < 10 ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-black border border-black';
+                    // Updated to black/white/red styling
+                    const statusColor = item.total_stock === 0 ? 'bg-gray-100 text-gray-500 border border-gray-300' : item.total_stock < 10 ? 'bg-red-100 text-red-600 border border-red-200' : 'bg-white text-black border border-black';
                     const progressValue = Math.min((item.total_stock / 50) * 100, 100); // Assume 50 is "full" stock for visual
                     
                     return (
@@ -81,7 +82,8 @@ const AdminInventory = () => {
                         </td>
                         <td className="py-4 px-6 w-1/4">
                            <div className="flex items-center gap-3">
-                             <Progress value={progressValue} className="h-2 bg-gray-100" indicatorClassName="bg-black" />
+                             {/* Indicator color logic */}
+                             <Progress value={progressValue} className="h-2 bg-gray-100" indicatorClassName={item.total_stock < 10 ? "bg-red-500" : "bg-black"} />
                              {item.total_stock < 10 && item.total_stock > 0 && (
                                <AlertTriangle size={16} className="text-red-500" />
                              )}

@@ -1,4 +1,3 @@
-// src/pages/LoginPage.js
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -30,7 +29,8 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (currentUser) {
-      navigate('/profile');
+      // CHANGED: Redirect to Home
+      navigate('/');
     }
   }, [currentUser, navigate]);
 
@@ -45,7 +45,8 @@ export default function LoginPage() {
       } else {
         await signUp(name, email, password);
       }
-      navigate('/profile');
+      // CHANGED: Redirect to Home
+      navigate('/');
     } catch (err) {
       console.error('Auth error:', err);
       const friendly =
@@ -58,12 +59,11 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="w-full h-screen flex items-center justify-center overflow-hidden bg-[#faf8f5]">
+    <div className="w-full h-screen flex items-center justify-center overflow-hidden bg-white">
       
-      {/* Left Side - Editorial Image (Hidden on mobile) */}
+      {/* Left Side - Editorial Image */}
       <div className="hidden lg:block w-1/2 h-full bg-black relative">
         <img 
-          // Using a high-quality fashion placeholder. Replace with your own brand image asset if you have one.
           src="https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=2070&auto=format&fit=crop" 
           alt="Fashion Editorial" 
           className="w-full h-full object-cover opacity-80"
@@ -81,14 +81,14 @@ export default function LoginPage() {
         
         <div className="w-full max-w-md space-y-8">
           <div className="text-center">
-            <h1 className="text-4xl font-bold playfair text-gray-900 mb-2">Fifth Beryl</h1>
+            <h1 className="text-4xl font-bold playfair text-black mb-2">Fifth Beryl</h1>
             <p className="text-gray-500">Welcome to the exclusive collection</p>
           </div>
 
           <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-8">
-              <TabsTrigger value="login">Login</TabsTrigger>
-              <TabsTrigger value="signup">Sign Up</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 mb-8 bg-gray-100 rounded-none p-1">
+              <TabsTrigger value="login" className="rounded-none data-[state=active]:bg-black data-[state=active]:text-white">Login</TabsTrigger>
+              <TabsTrigger value="signup" className="rounded-none data-[state=active]:bg-black data-[state=active]:text-white">Sign Up</TabsTrigger>
             </TabsList>
 
             {/* --- LOGIN TAB --- */}
@@ -96,7 +96,7 @@ export default function LoginPage() {
               <Card className="border-none shadow-none bg-transparent">
                 <form onSubmit={(e) => handleEmailSubmit(e, 'login')}>
                   <CardHeader className="px-0 pt-0">
-                    <CardTitle className="text-2xl playfair">Welcome Back</CardTitle>
+                    <CardTitle className="text-2xl playfair text-black">Welcome Back</CardTitle>
                     <CardDescription>
                       Enter your credentials to access your account.
                     </CardDescription>
@@ -119,28 +119,25 @@ export default function LoginPage() {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
-                        className="h-11 bg-white"
+                        className="h-11 bg-white rounded-none border-gray-300 focus:border-black"
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="login-password">Password</Label>
-                        {/* Optional: Add Forgot Password link here later */}
-                      </div>
+                      <Label htmlFor="login-password">Password</Label>
                       <Input
                         id="login-password"
                         type="password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
-                        className="h-11 bg-white"
+                        className="h-11 bg-white rounded-none border-gray-300 focus:border-black"
                       />
                     </div>
                   </CardContent>
 
                   <CardFooter className="px-0 flex flex-col gap-4">
-                    <Button type="submit" className="w-full h-11 text-base bg-green-700 hover:bg-green-800 transition-colors" disabled={loading}>
+                    <Button type="submit" className="w-full h-11 text-base bg-black hover:bg-gray-800 text-white rounded-none transition-colors" disabled={loading}>
                       {loading ? 'Signing In...' : 'Sign In'}
                     </Button>
                   </CardFooter>
@@ -153,7 +150,7 @@ export default function LoginPage() {
               <Card className="border-none shadow-none bg-transparent">
                 <form onSubmit={(e) => handleEmailSubmit(e, 'signup')}>
                   <CardHeader className="px-0 pt-0">
-                    <CardTitle className="text-2xl playfair">Create Account</CardTitle>
+                    <CardTitle className="text-2xl playfair text-black">Create Account</CardTitle>
                     <CardDescription>
                       Join us for an exclusive shopping experience.
                     </CardDescription>
@@ -176,7 +173,7 @@ export default function LoginPage() {
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         required
-                        className="h-11 bg-white"
+                        className="h-11 bg-white rounded-none border-gray-300 focus:border-black"
                       />
                     </div>
 
@@ -189,7 +186,7 @@ export default function LoginPage() {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
-                        className="h-11 bg-white"
+                        className="h-11 bg-white rounded-none border-gray-300 focus:border-black"
                       />
                     </div>
 
@@ -202,13 +199,13 @@ export default function LoginPage() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
-                        className="h-11 bg-white"
+                        className="h-11 bg-white rounded-none border-gray-300 focus:border-black"
                       />
                     </div>
                   </CardContent>
 
                   <CardFooter className="px-0 flex flex-col gap-4">
-                    <Button type="submit" className="w-full h-11 text-base bg-green-700 hover:bg-green-800 transition-colors" disabled={loading}>
+                    <Button type="submit" className="w-full h-11 text-base bg-black hover:bg-gray-800 text-white rounded-none transition-colors" disabled={loading}>
                       {loading ? 'Creating Account...' : 'Join Fifth Beryl'}
                     </Button>
                   </CardFooter>

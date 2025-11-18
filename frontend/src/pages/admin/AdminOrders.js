@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Package, Truck, CheckCircle, XCircle, Eye } from 'lucide-react';
+import { ArrowLeft, Package, Truck, CheckCircle, XCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
@@ -16,7 +16,7 @@ import {
 import { toast } from 'sonner';
 
 const AdminOrders = () => {
-  const { api } = useAuth(); // Use 'api'
+  const { api } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -57,7 +57,7 @@ const AdminOrders = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white pt-24"> {/* FIX: Added pt-24 */}
       <Navbar />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -113,7 +113,7 @@ const AdminOrders = () => {
                             defaultValue={order.status} 
                             onValueChange={(val) => updateStatus(order.id, val)}
                           >
-                            <SelectTrigger className="w-[130px] h-8 text-xs border-gray-300 rounded-none">
+                            <SelectTrigger className="w-[130px] h-8 text-xs border-gray-300 rounded-none focus:ring-black">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -135,7 +135,6 @@ const AdminOrders = () => {
           </div>
         )}
       </div>
-
       <Footer />
     </div>
   );

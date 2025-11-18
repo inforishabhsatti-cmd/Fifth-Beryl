@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Upload, Save } from 'lucide-react';
+import { ArrowLeft, Save } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import FileUpload from '../../components/FileUpload';
 
 const AdminLandingPage = () => {
-  const { api } = useAuth(); // Use 'api'
+  const { api } = useAuth();
   const [settings, setSettings] = useState({
     hero_title: '',
     hero_subtitle: '',
@@ -61,7 +61,7 @@ const AdminLandingPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white pt-24"> {/* FIX: Added pt-24 to clear navbar */}
       <Navbar />
       
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -112,14 +112,14 @@ const AdminLandingPage = () => {
                         {settings.hero_media_type === 'video' ? (
                           <video 
                             src={settings.hero_media} 
-                            className="max-h-64 mx-auto rounded-lg"
+                            className="max-h-64 mx-auto"
                             controls
                           />
                         ) : (
                           <img 
                             src={settings.hero_media} 
                             alt="Hero Preview" 
-                            className="max-h-64 mx-auto rounded-lg object-cover"
+                            className="max-h-64 mx-auto object-cover"
                           />
                         )}
                         <Button

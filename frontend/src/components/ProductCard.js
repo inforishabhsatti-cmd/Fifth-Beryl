@@ -1,4 +1,3 @@
-// src/components/ProductCard.js
 import { motion } from 'framer-motion';
 import { Heart, ShoppingCart, Sparkles } from 'lucide-react';
 import { useState } from 'react';
@@ -9,7 +8,7 @@ import { useAuth } from '../context/AuthContext';
 const ProductCard = ({ product, index }) => {
   const navigate = useNavigate();
   const [isHovered, setIsHovered] = useState(false);
-  const { currentUser } = useAuth(); // Updated to correct variable name
+  const { currentUser } = useAuth(); 
   const { toggleWishlist, isItemInWishlist, loading: wishlistLoading } = useWishlist();
   const isWishlisted = isItemInWishlist(product.id);
 
@@ -43,7 +42,8 @@ const ProductCard = ({ product, index }) => {
     >
       <motion.div
         whileHover={{ y: -8 }}
-        className="relative overflow-hidden bg-white border border-gray-100 hover:shadow-xl hover:shadow-black/5 transition-all duration-500"
+        // ADDED: hover:border-black hover:shadow-2xl
+        className="relative overflow-hidden bg-white border border-gray-100 hover:border-black hover:shadow-2xl transition-all duration-300"
       >
         {/* Image Container */}
         <div className="relative overflow-hidden aspect-[4/5] bg-gray-50">
@@ -64,16 +64,9 @@ const ProductCard = ({ product, index }) => {
                 Featured
               </div>
             )}
-            
             {totalStock === 0 && (
               <div className="bg-gray-200 text-gray-600 px-3 py-1 text-[10px] uppercase tracking-widest font-bold">
                 Sold Out
-              </div>
-            )}
-            
-            {totalStock > 0 && totalStock < 5 && (
-              <div className="bg-red-600 text-white px-3 py-1 text-[10px] uppercase tracking-widest font-bold">
-                Low Stock
               </div>
             )}
           </div>
@@ -82,13 +75,13 @@ const ProductCard = ({ product, index }) => {
           <motion.button
             initial={{ opacity: 0 }}
             animate={{ opacity: isHovered || isWishlisted ? 1 : 0 }}
-            className="absolute top-3 right-3 p-2 bg-white rounded-full shadow-md hover:bg-gray-50 transition-colors"
+            className="absolute top-3 right-3 p-2 bg-white border border-black rounded-full shadow-md hover:bg-black hover:text-white transition-all"
             onClick={handleWishlistToggle}
             disabled={wishlistLoading}
           >
             <Heart 
               size={18} 
-              className={`transition-colors ${isWishlisted ? 'fill-black text-black' : 'text-black'}`} 
+              className={`transition-colors ${isWishlisted ? 'fill-black text-black hover:fill-white hover:text-white' : ''}`} 
               strokeWidth={1.5}
             />
           </motion.button>
@@ -116,7 +109,7 @@ const ProductCard = ({ product, index }) => {
         
         {/* Content */}
         <div className="p-4">
-          <h3 className="text-lg font-medium mb-1 playfair text-black group-hover:underline decoration-1 underline-offset-4">
+          <h3 className="text-lg font-medium mb-1 playfair text-black group-hover:underline decoration-1 underline-offset-4 decoration-black">
             {product.name}
           </h3>
           

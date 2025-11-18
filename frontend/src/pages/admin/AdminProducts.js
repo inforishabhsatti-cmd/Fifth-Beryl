@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Plus, Edit, Trash2, X } from 'lucide-react';
+import { Plus, Edit, Trash2, ArrowLeft, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
@@ -20,13 +20,11 @@ import { toast } from 'sonner';
 import FileUpload from '../../components/FileUpload';
 
 const AdminProducts = () => {
-  const { api } = useAuth(); // Use 'api'
+  const { api } = useAuth();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false); // Correct state name
   const [editingProduct, setEditingProduct] = useState(null);
-
-  // Form State
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -34,7 +32,7 @@ const AdminProducts = () => {
     category: 'shirts',
     featured: false,
     images: [],
-    variants: [] // Simple variant handling for now
+    variants: []
   });
 
   useEffect(() => {
@@ -53,7 +51,6 @@ const AdminProducts = () => {
   };
 
   const handleImageUpload = (fileData) => {
-    // fileData can be a single object or an array depending on the component
     const newImages = Array.isArray(fileData) 
       ? fileData.map(f => ({ url: f.url, alt: f.name }))
       : [{ url: fileData.url, alt: fileData.name }];
@@ -66,13 +63,11 @@ const AdminProducts = () => {
 
   const handleSaveProduct = async () => {
     try {
-      // Basic validation
       if (!formData.name || !formData.price) {
         toast.error('Name and Price are required');
         return;
       }
 
-      // Default variant if none added (to prevent backend errors)
       const productData = {
         ...formData,
         price: parseFloat(formData.price),
@@ -89,7 +84,7 @@ const AdminProducts = () => {
         toast.success('Product created');
       }
       
-      setIsModalOpen(false);
+      setDialogOpen(false); // FIX: Use dialogOpen state setter
       setEditingProduct(null);
       resetForm();
       fetchProducts();
@@ -115,13 +110,13 @@ const AdminProducts = () => {
     setFormData({
       name: product.name,
       description: product.description,
-      price: product.price,
+      price: product.price.toString(),
       category: product.category,
       featured: product.featured,
       images: product.images,
       variants: product.variants
     });
-    setIsModalOpen(true);
+    setDialogOpen(true); // FIX: Use dialogOpen state setter
   };
 
   const resetForm = () => {
@@ -137,21 +132,22 @@ const AdminProducts = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white pt-24">
       <Navbar />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-4">
             <Link to="/admin">
-              <Button variant="outline" size="icon" className="rounded-none border-black hover:bg-black hover:text-white">
+              <Button variant="outline" size="icon" className="rounded-none border-black hover:bg-black hover:text-white" data-testid="back-btn">
                 <ArrowLeft size={20} />
               </Button>
             </Link>
-            <h1 className="text-4xl font-bold playfair text-black">Products</h1>
+            <h1 className="text-4xl font-bold playfair text-black" data-testid="admin-products-title">Manage Products</h1>
           </div>
-          <Dialog open={isModalOpen} onOpenChange={(open) => {
-             setIsModalOpen(open);
+          
+          <Dialog open={dialogOpen} onOpenChange={(open) => { // FIX: Use dialogOpen
+             setDialogOpen(open);
              if(!open) { setEditingProduct(null); resetForm(); }
           }}>
             <DialogTrigger asChild>

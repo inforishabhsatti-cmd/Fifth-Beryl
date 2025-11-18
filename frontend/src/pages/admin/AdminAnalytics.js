@@ -42,7 +42,7 @@ const AdminAnalytics = () => {
   })) || [];
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white pt-24"> {/* FIX: Added pt-24 */}
       <Navbar />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -67,7 +67,6 @@ const AdminAnalytics = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="bg-white border border-gray-200 p-6 shadow-sm"
-                data-testid="total-orders-card"
               >
                 <p className="text-gray-500 mb-2 text-sm uppercase tracking-wider">Total Orders</p>
                 <p className="text-4xl font-bold text-black">{analytics.total_orders}</p>
@@ -78,7 +77,6 @@ const AdminAnalytics = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
                 className="bg-white border border-gray-200 p-6 shadow-sm"
-                data-testid="total-revenue-card"
               >
                 <p className="text-gray-500 mb-2 text-sm uppercase tracking-wider">Total Revenue</p>
                 <p className="text-4xl font-bold text-black">₹{analytics.total_revenue.toFixed(2)}</p>
@@ -89,7 +87,6 @@ const AdminAnalytics = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
                 className="bg-white border border-gray-200 p-6 shadow-sm"
-                data-testid="avg-order-card"
               >
                 <p className="text-gray-500 mb-2 text-sm uppercase tracking-wider">Avg. Order Value</p>
                 <p className="text-4xl font-bold text-black">
@@ -106,7 +103,6 @@ const AdminAnalytics = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
                 className="bg-white border border-gray-200 p-6 shadow-sm"
-                data-testid="status-chart"
               >
                 <h2 className="text-2xl font-bold mb-6 playfair text-black">Order Status Distribution</h2>
                 <ResponsiveContainer width="100%" height={300}>
@@ -137,7 +133,6 @@ const AdminAnalytics = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4 }}
                 className="bg-white border border-gray-200 p-6 shadow-sm"
-                data-testid="revenue-chart"
               >
                 <h2 className="text-2xl font-bold mb-6 playfair text-black">Recent Orders Revenue</h2>
                 <ResponsiveContainer width="100%" height={300}>

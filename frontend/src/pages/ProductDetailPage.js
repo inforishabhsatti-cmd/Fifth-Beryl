@@ -1,4 +1,3 @@
-// src/pages/ProductDetailPage.js
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -16,7 +15,6 @@ const ProductDetailPage = () => {
   const navigate = useNavigate();
   const { addToCart } = useCart();
   
-  // Use correct variable names from context
   const { currentUser: user, api } = useAuth();
   
   const [product, setProduct] = useState(null);
@@ -93,7 +91,7 @@ const ProductDetailPage = () => {
     return (
       <div className="min-h-screen bg-white">
         <Navbar />
-        <div className="flex justify-center items-center py-20">
+        <div className="flex justify-center items-center py-40">
           <div className="spinner" />
         </div>
       </div>
@@ -104,7 +102,7 @@ const ProductDetailPage = () => {
     return (
       <div className="min-h-screen bg-white">
         <Navbar />
-        <div className="text-center py-20">
+        <div className="text-center py-40">
           <h2 className="text-2xl font-bold text-black">Product not found</h2>
           <Button onClick={() => navigate('/products')} className="mt-4 bg-black text-white">Back to Products</Button>
         </div>
@@ -117,7 +115,7 @@ const ProductDetailPage = () => {
     : 0;
 
   return (
-    <div className="min-h-screen bg-white text-black">
+    <div className="min-h-screen bg-white text-black pt-24"> {/* Added pt-24 */}
       <Navbar />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
