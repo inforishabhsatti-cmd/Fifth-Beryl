@@ -7,7 +7,6 @@ import Footer from '../components/Footer';
 import axios from 'axios';
 import { Input } from '../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-// --- NEW: Import Pagination components ---
 import {
   Pagination,
   PaginationContent,
@@ -27,8 +26,6 @@ const ProductsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('name');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchTerm);
-
-  // --- NEW: Pagination state ---
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalProducts, setTotalProducts] = useState(0);
@@ -36,14 +33,14 @@ const ProductsPage = () => {
   useEffect(() => {
     const timerId = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm);
-      setCurrentPage(1); // Reset to page 1 on new search
+      setCurrentPage(1); 
     }, 500);
     return () => clearTimeout(timerId);
   }, [searchTerm]);
 
   useEffect(() => {
     fetchProducts();
-  }, [debouncedSearchTerm, sortBy, currentPage]); // Re-fetch when page changes
+  }, [debouncedSearchTerm, sortBy, currentPage]); 
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -54,16 +51,13 @@ const ProductsPage = () => {
       }
       params.append('sort', sortBy);
       params.append('page', currentPage);
-      params.append('limit', 12); // Show 12 products per page
+      params.append('limit', 12); 
 
       const response = await axios.get(`${API}/products?${params.toString()}`);
       
-      // --- NEW: Set pagination data from response ---
       setProducts(response.data.products);
       setTotalProducts(response.data.total_products);
       setTotalPages(response.data.total_pages);
-      // --- END NEW ---
-
     } catch (error) {
       console.error('Error fetching products:', error);
     } finally {
@@ -74,10 +68,9 @@ const ProductsPage = () => {
   const handlePageChange = (page) => {
     if (page < 1 || page > totalPages) return;
     setCurrentPage(page);
-    window.scrollTo(0, 0); // Scroll to top on page change
+    window.scrollTo(0, 0);
   };
 
-  // --- NEW: Helper to render pagination links ---
   const renderPagination = () => {
     if (totalPages <= 1) return null;
 
@@ -132,13 +125,11 @@ const ProductsPage = () => {
       </Pagination>
     );
   };
-  // --- END NEW ---
 
-  // Products are already filtered by backend
   const filteredProducts = products; 
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen pt-24 bg-white"> {/* Added pt-24 for navbar spacing */}
       <Navbar />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -147,7 +138,7 @@ const ProductsPage = () => {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-12"
         >
-          <h1 className="text-4xl sm:text-5xl font-bold mb-4 playfair" data-testid="products-title">
+          <h1 className="text-4xl sm:text-5xl font-bold mb-4 playfair text-black" data-testid="products-title">
             Our Collection
           </h1>
           <p className="text-gray-600 text-lg">Discover premium quality shirts for every occasion</p>
@@ -160,13 +151,13 @@ const ProductsPage = () => {
               type="text"
               placeholder="Search products..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.g.target.value)}
-              className="pl-10"
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 border-gray-300 focus:border-black rounded-none"
               data-testid="search-input"
             />
           </div>
           <Select value={sortBy} onValueChange={(value) => { setSortBy(value); setCurrentPage(1); }}>
-            <SelectTrigger className="w-full sm:w-48" data-testid="sort-select">
+            <SelectTrigger className="w-full sm:w-48 border-gray-300 focus:border-black rounded-none" data-testid="sort-select">
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
             <SelectContent>
@@ -187,8 +178,6 @@ const ProductsPage = () => {
           </div>
         ) : (
           <>
-            {/* --- THIS IS THE FIX --- */}
-            {/* Changed grid-cols-1 to grid-cols-2 */}
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-8" data-testid="products-grid">
               {filteredProducts.map((product, index) => (
                 <motion.div
@@ -200,44 +189,41 @@ const ProductsPage = () => {
                   onClick={() => navigate(`/product/${product.id}`)}
                   data-testid={`product-card-${index}`}
                 >
-                  <div className="bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-2">
-                    <div className="relative overflow-hidden aspect-square">
+                  <div className="bg-white overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+                    <div className="relative overflow-hidden aspect-[4/5] bg-gray-50">
                       <img
                         src={product.images[0]?.url.replace('/upload/', '/upload/w_400,q_auto,f_auto/') || '/placeholder.jpg'}
                         alt={product.name}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        className="w-full h-full object-cover mix-blend-multiply group-hover:scale-105 transition-transform duration-500"
                       />
                       {product.featured && (
-                        <div className="absolute top-4 right-4 bg-green-700 text-white px-3 py-1 rounded-full text-sm font-semibold">
+                        <div className="absolute top-3 left-3 bg-black text-white px-2 py-1 text-[10px] font-bold uppercase tracking-widest">
                           Featured
                         </div>
                       )}
                     </div>
-                    <div className="p-6">
-                      <h3 className="text-xl font-semibold mb-2 playfair">{product.name}</h3>
-                      <p className="text-gray-600 mb-3 line-clamp-2">{product.description}</p>
-                      <div className="flex justify-between items-center">
-                        <span className="text-2xl font-bold text-green-700">₹{product.price}</span>
-                        <div className="flex gap-1">
+                    <div className="p-4 text-center">
+                      <h3 className="text-lg font-medium mb-1 playfair text-black group-hover:underline decoration-1 underline-offset-4">{product.name}</h3>
+                      <p className="text-gray-500 mb-2 line-clamp-1 text-xs">{product.description}</p>
+                      <div className="flex justify-center items-center gap-2">
+                        <span className="text-lg font-bold text-black">₹{product.price}</span>
+                      </div>
+                      {/* Color dots */}
+                       <div className="flex justify-center gap-1 mt-2">
                           {product.variants?.slice(0, 3).map((variant, i) => (
                             <div
                               key={i}
-                              className="w-6 h-6 rounded-full border-2 border-gray-300"
+                              className="w-3 h-3 rounded-full border border-gray-300"
                               style={{ backgroundColor: variant.color_code }}
                             />
                           ))}
-                          {product.variants?.length > 3 && (
-                            <div className="text-xs text-gray-500 flex items-center">+{product.variants.length - 3}</div>
-                          )}
-                        </div>
-                      </div>
+                       </div>
                     </div>
                   </div>
                 </motion.div>
               ))}
             </div>
-
-            {/* --- NEW: Render the pagination controls --- */}
+            
             {renderPagination()}
           </>
         )}

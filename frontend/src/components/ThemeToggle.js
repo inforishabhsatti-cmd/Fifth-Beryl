@@ -1,22 +1,23 @@
-import { Lightbulb, LightbulbOff } from 'lucide-react';
+// src/components/ThemeToggle.js
+import { Moon, Sun } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { motion } from 'framer-motion';
 
 const ThemeToggle = () => {
-  const { theme, toggleTheme, isDark } = useTheme();
+  const { toggleTheme, isDark } = useTheme();
 
   return (
     <motion.button
-      whileHover={{ scale: 1.1 }}
-      whileTap={{ scale: 0.9 }}
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
       onClick={toggleTheme}
       className={`
-        relative p-3 rounded-full transition-all duration-300 
+        relative p-2.5 rounded-full transition-all duration-300 border-2
         ${isDark 
-          ? 'bg-yellow-400 text-gray-900 hover:bg-yellow-300 shadow-yellow-400/25' 
-          : 'bg-gray-800 text-yellow-400 hover:bg-gray-700 shadow-gray-800/25'
+          ? 'bg-white text-black border-white hover:bg-gray-100' 
+          : 'bg-black text-white border-black hover:bg-gray-900'
         } 
-        shadow-lg hover:shadow-xl
+        shadow-md
       `}
       title={`Switch to ${isDark ? 'light' : 'dark'} mode`}
       data-testid="theme-toggle"
@@ -24,26 +25,17 @@ const ThemeToggle = () => {
       <motion.div
         initial={false}
         animate={{ 
-          rotate: isDark ? 0 : 180,
-          scale: isDark ? 1 : 0.8
+          rotate: isDark ? 360 : 0,
+          scale: 1
         }}
-        transition={{ duration: 0.3 }}
+        transition={{ duration: 0.4, ease: "backOut" }}
       >
         {isDark ? (
-          <Lightbulb size={24} className="drop-shadow-sm" />
+          <Sun size={20} strokeWidth={2} />
         ) : (
-          <LightbulbOff size={24} className="drop-shadow-sm" />
+          <Moon size={20} strokeWidth={2} />
         )}
       </motion.div>
-      
-      {/* Glow effect */}
-      <div className={`
-        absolute inset-0 rounded-full transition-all duration-300
-        ${isDark 
-          ? 'bg-yellow-400/20 blur-xl' 
-          : 'bg-gray-800/20 blur-xl'
-        }
-      `} />
     </motion.button>
   );
 };

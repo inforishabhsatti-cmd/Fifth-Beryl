@@ -1,4 +1,6 @@
-// Convert file to base64 for storage
+// src/utils/fileUpload.js
+
+// Convert file to base64 for storage (Optional utility, good to keep)
 export const fileToBase64 = (file) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();

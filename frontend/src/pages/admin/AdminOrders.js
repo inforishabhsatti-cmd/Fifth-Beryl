@@ -1,19 +1,22 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Package } from 'lucide-react';
+import { ArrowLeft, Package, Truck, CheckCircle, XCircle, Eye } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 import { useAuth } from '../../context/AuthContext';
-import axios from 'axios';
 import { Button } from '../../components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../../components/ui/select';
 import { toast } from 'sonner';
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
-
 const AdminOrders = () => {
-  const { token } = useAuth();
+  const { api } = useAuth(); // Use 'api'
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -23,151 +26,112 @@ const AdminOrders = () => {
 
   const fetchOrders = async () => {
     try {
-      const response = await axios.get(`${API}/orders`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await api.get('/orders');
       setOrders(response.data);
     } catch (error) {
       console.error('Error fetching orders:', error);
+      toast.error('Failed to fetch orders');
     } finally {
       setLoading(false);
     }
   };
 
-  const updateOrderStatus = async (orderId, status) => {
+  const updateStatus = async (orderId, newStatus) => {
     try {
-      await axios.put(
-        `${API}/orders/${orderId}/status?status=${status}`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await api.put(`/orders/${orderId}/status?status=${newStatus}`);
       toast.success('Order status updated');
-      fetchOrders();
+      fetchOrders(); // Refresh
     } catch (error) {
-      console.error('Error updating order status:', error);
-      toast.error('Failed to update order status');
+      console.error('Error updating status:', error);
+      toast.error('Failed to update status');
     }
   };
 
-  const getStatusColor = (status) => {
+  const getStatusIcon = (status) => {
     switch (status) {
-      case 'delivered':
-        return 'bg-green-100 text-green-800';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800';
-      case 'shipped':
-        return 'bg-blue-100 text-blue-800';
-      case 'processing':
-        return 'bg-yellow-100 text-yellow-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+      case 'delivered': return <CheckCircle className="text-black" size={20} />;
+      case 'cancelled': return <XCircle className="text-red-500" size={20} />;
+      case 'shipped': return <Truck className="text-gray-600" size={20} />;
+      default: return <Package className="text-gray-400" size={20} />;
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#faf8f5]">
+    <div className="min-h-screen bg-white">
       <Navbar />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="flex items-center gap-4 mb-8">
           <Link to="/admin">
-            <Button variant="outline" size="icon" data-testid="back-btn">
+            <Button variant="outline" size="icon" className="rounded-none border-black hover:bg-black hover:text-white">
               <ArrowLeft size={20} />
             </Button>
           </Link>
-          <h1 className="text-4xl font-bold playfair" data-testid="admin-orders-title">Manage Orders</h1>
+          <h1 className="text-4xl font-bold playfair text-black">Manage Orders</h1>
         </div>
 
         {loading ? (
           <div className="flex justify-center py-20">
             <div className="spinner" />
           </div>
-        ) : orders.length === 0 ? (
-          <div className="text-center py-20" data-testid="no-orders">
-            <Package size={80} className="mx-auto text-gray-300 mb-6" />
-            <h2 className="text-2xl font-bold playfair">No orders yet</h2>
-          </div>
         ) : (
-          <div className="space-y-6" data-testid="orders-list">
-            {orders.map((order, index) => (
-              <motion.div
-                key={order.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className="bg-white rounded-2xl p-6 shadow-lg"
-                data-testid={`order-${index}`}
-              >
-                <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-4 mb-4">
-                      <div>
-                        <p className="text-sm text-gray-600">Order ID</p>
-                        <p className="font-semibold">{order.id.substring(0, 8)}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Customer</p>
-                        <p className="font-semibold">{order.user_email}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Total</p>
-                        <p className="text-xl font-bold text-emerald-600">₹{order.total_amount}</p>
-                      </div>
-                    </div>
-
-                    <div className="mb-4">
-                      <h3 className="font-semibold mb-2">Items</h3>
-                      <div className="space-y-2">
-                        {order.items.map((item, itemIndex) => (
-                          <div key={itemIndex} className="flex justify-between items-center text-sm">
-                            <span>{item.product_name} ({item.color}, {item.size}) x {item.quantity}</span>
-                            <span className="font-semibold">₹{item.price * item.quantity}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div>
-                      <h3 className="font-semibold mb-2">Shipping Address</h3>
-                      <p className="text-sm text-gray-600">
-                        {order.shipping_address.name}<br />
-                        {order.shipping_address.address_line1}<br />
-                        {order.shipping_address.address_line2 && `${order.shipping_address.address_line2}\n`}
-                        {order.shipping_address.city}, {order.shipping_address.state} {order.shipping_address.postal_code}<br />
-                        Phone: {order.shipping_address.phone}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="lg:w-64">
-                    <p className="text-sm text-gray-600 mb-2">Update Status</p>
-                    <Select
-                      value={order.status}
-                      onValueChange={(value) => updateOrderStatus(order.id, value)}
+          <div className="bg-white border border-gray-200 shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-200">
+                    <th className="text-left py-4 px-6 font-semibold text-gray-900 uppercase tracking-wider text-sm">Order ID</th>
+                    <th className="text-left py-4 px-6 font-semibold text-gray-900 uppercase tracking-wider text-sm">Customer</th>
+                    <th className="text-left py-4 px-6 font-semibold text-gray-900 uppercase tracking-wider text-sm">Items</th>
+                    <th className="text-left py-4 px-6 font-semibold text-gray-900 uppercase tracking-wider text-sm">Total</th>
+                    <th className="text-left py-4 px-6 font-semibold text-gray-900 uppercase tracking-wider text-sm">Status</th>
+                    <th className="text-left py-4 px-6 font-semibold text-gray-900 uppercase tracking-wider text-sm">Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orders.map((order, index) => (
+                    <motion.tr 
+                      key={order.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                      className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
                     >
-                      <SelectTrigger data-testid={`status-select-${index}`}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="processing">Processing</SelectItem>
-                        <SelectItem value="shipped">Shipped</SelectItem>
-                        <SelectItem value="delivered">Delivered</SelectItem>
-                        <SelectItem value="cancelled">Cancelled</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <div className="mt-4">
-                      <span className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(order.status)}`}>
-                        {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-4">
-                      Ordered: {new Date(order.created_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
+                      <td className="py-4 px-6 font-medium text-black">{order.id.substring(0, 8)}</td>
+                      <td className="py-4 px-6 text-gray-600">
+                        <div className="font-medium text-black">{order.shipping_address.name}</div>
+                        <div className="text-xs text-gray-500">{order.user_email}</div>
+                      </td>
+                      <td className="py-4 px-6 text-gray-600">
+                        {order.items.length} items
+                      </td>
+                      <td className="py-4 px-6 font-bold text-black">₹{order.total_amount}</td>
+                      <td className="py-4 px-6">
+                        <div className="flex items-center gap-2">
+                          {getStatusIcon(order.status)}
+                          <Select 
+                            defaultValue={order.status} 
+                            onValueChange={(val) => updateStatus(order.id, val)}
+                          >
+                            <SelectTrigger className="w-[130px] h-8 text-xs border-gray-300 rounded-none">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="pending">Pending</SelectItem>
+                              <SelectItem value="processing">Processing</SelectItem>
+                              <SelectItem value="shipped">Shipped</SelectItem>
+                              <SelectItem value="delivered">Delivered</SelectItem>
+                              <SelectItem value="cancelled">Cancelled</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </td>
+                      <td className="py-4 px-6 text-gray-500 text-sm">{new Date(order.created_at).toLocaleDateString()}</td>
+                    </motion.tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>

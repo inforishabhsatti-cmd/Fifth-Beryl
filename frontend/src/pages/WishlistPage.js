@@ -1,3 +1,4 @@
+// src/pages/WishlistPage.js
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Heart } from 'lucide-react';
@@ -5,24 +6,24 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { useAuth } from '../context/AuthContext';
 import { useWishlist } from '../context/WishlistContext';
-import axios from 'axios';
-import { Button } from '../components/ui/button';
+import { Button } from '@/components/ui/button'; // Fix import path
 import { useNavigate } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
-
 const WishlistPage = () => {
-  const { user, loading: authLoading, signInWithGoogle } = useAuth();
+  // --- FIX: Destructure currentUser as user ---
+  const { currentUser: user, loading: authLoading, api } = useAuth();
   const { wishlist } = useWishlist();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!authLoading && user && wishlist.length > 0) {
+    if (authLoading) return;
+
+    if (user && wishlist.length > 0) {
       fetchWishlistProducts();
-    } else if (!authLoading) {
+    } else {
       setLoading(false);
     }
   }, [user, authLoading, wishlist]);
@@ -30,9 +31,9 @@ const WishlistPage = () => {
   const fetchWishlistProducts = async () => {
     setLoading(true);
     try {
-      // This is not efficient, but it's simple.
-      // A better way would be a new backend endpoint: GET /api/products/batch
-      const productRequests = wishlist.map(id => axios.get(`${API}/products/${id}`));
+      // Using 'api' from context is safer, but since these are GET requests
+      // to public product endpoints, your original logic is okay too.
+      const productRequests = wishlist.map(id => api.get(`/products/${id}`));
       const responses = await Promise.all(productRequests);
       setProducts(responses.map(res => res.data));
     } catch (error) {
@@ -42,7 +43,7 @@ const WishlistPage = () => {
     }
   };
 
-  if (authLoading || loading) {
+  if (authLoading || (user && loading)) {
     return (
       <div className="min-h-screen">
         <Navbar />
@@ -60,8 +61,9 @@ const WishlistPage = () => {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
           <h2 className="text-3xl font-bold mb-4 playfair">Please Sign In</h2>
           <p className="text-gray-600 mb-8">Sign in to view your wishlist</p>
-          <Button onClick={signInWithGoogle} className="bg-green-700 hover:bg-green-800">
-            Sign In with Google
+          {/* --- FIX: Correct sign-in button --- */}
+          <Button onClick={() => navigate('/login')} className="bg-green-700 hover:bg-green-800">
+            Sign In
           </Button>
         </div>
         <Footer />

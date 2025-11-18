@@ -1,3 +1,4 @@
+// src/pages/OrdersPage.js
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Package, Truck, CheckCircle, XCircle } from 'lucide-react';
@@ -5,28 +6,32 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { Button } from '../components/ui/button';
-
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+import { Button } from '@/components/ui/button'; // Make sure this path is correct
 
 const OrdersPage = () => {
-  const { user, token, signInWithGoogle } = useAuth();
+  // --- FIX: Destructure currentUser as user ---
+  const { currentUser: user, api, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user && token) {
+    // Wait for auth to check login status
+    if (authLoading) return;
+
+    if (user) {
       fetchOrders();
+    } else {
+      // If not logged in, stop loading to show the "Please Sign In" screen
+      setLoading(false);
     }
-  }, [user, token]);
+  }, [user, authLoading]);
 
   const fetchOrders = async () => {
+    setLoading(true);
     try {
-      const response = await axios.get(`${API}/orders/my-orders`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      // --- FIX: Use 'api' from context (it handles the token automatically) ---
+      const response = await api.get('/orders/my-orders');
       setOrders(response.data);
     } catch (error) {
       console.error('Error fetching orders:', error);
@@ -63,6 +68,17 @@ const OrdersPage = () => {
     }
   };
 
+  // If auth is loading, show spinner
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-[#faf8f5]">
+         <Navbar />
+         <div className="flex justify-center py-20"><div className="spinner" /></div>
+      </div>
+    );
+  }
+
+  // If not logged in
   if (!user) {
     return (
       <div className="min-h-screen bg-[#faf8f5]">
@@ -70,8 +86,9 @@ const OrdersPage = () => {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
           <h2 className="text-3xl font-bold mb-4 playfair">Please Sign In</h2>
           <p className="text-gray-600 mb-8">Sign in to view your orders</p>
-          <Button onClick={signInWithGoogle} className="bg-emerald-600 hover:bg-emerald-700">
-            Sign In with Google
+          {/* --- FIX: Correct sign-in button --- */}
+          <Button onClick={() => navigate('/login')} className="bg-green-700 hover:bg-green-800">
+            Sign In
           </Button>
         </div>
         <Footer />
@@ -102,7 +119,7 @@ const OrdersPage = () => {
             <Package size={80} className="mx-auto text-gray-300 mb-6" />
             <h2 className="text-2xl font-bold mb-4 playfair">No orders yet</h2>
             <p className="text-gray-600 mb-8">Start shopping to place your first order</p>
-            <Button onClick={() => navigate('/products')} className="bg-emerald-600 hover:bg-emerald-700">
+            <Button onClick={() => navigate('/products')} className="bg-green-700 hover:bg-green-800">
               Shop Now
             </Button>
           </div>
@@ -131,7 +148,7 @@ const OrdersPage = () => {
                     </span>
                     <div className="text-right">
                       <p className="text-sm text-gray-600">Total</p>
-                      <p className="text-2xl font-bold text-emerald-600">₹{order.total_amount}</p>
+                      <p className="text-2xl font-bold text-green-700">₹{order.total_amount}</p>
                     </div>
                   </div>
                 </div>

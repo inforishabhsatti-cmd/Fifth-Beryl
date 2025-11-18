@@ -1,13 +1,14 @@
-import { useState, useEffect } from 'react'; // <-- Import useEffect
+// src/pages/CheckoutPage.js
+import { useState, useEffect } from 'react'; 
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import axios from 'axios';
 
@@ -16,9 +17,12 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const CheckoutPage = () => {
   const navigate = useNavigate();
   const { cart, cartTotal, clearCart } = useCart();
-  const { user, token, signInWithGoogle } = useAuth(); // Removed 'loading' as we use a new one
-  const [loading, setLoading] = useState(false); // For payment processing
-  const [dataLoading, setDataLoading] = useState(true); // For fetching profile
+  
+  // FIX: Removed signInWithGoogle, renamed currentUser to user
+  const { currentUser: user, api } = useAuth(); 
+  
+  const [loading, setLoading] = useState(false); 
+  const [dataLoading, setDataLoading] = useState(true); 
   
   const [shippingAddress, setShippingAddress] = useState({
     name: '',
@@ -31,19 +35,15 @@ const CheckoutPage = () => {
     country: 'India'
   });
 
-  // --- NEW: Fetch profile to pre-fill shipping address ---
   useEffect(() => {
     const fetchProfile = async () => {
-      if (user && token) {
+      if (user) {
         try {
-          const response = await axios.get(`${API}/profile`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
+          const response = await api.get('/profile');
           const profile = response.data;
           
-          // Pre-fill the form with profile data, falling back to empty strings
           setShippingAddress({
-            name: profile.name || user.displayName || '',
+            name: profile.name || user.name || '',
             phone: profile.shipping_address?.phone || '',
             address_line1: profile.shipping_address?.address_line1 || '',
             address_line2: profile.shipping_address?.address_line2 || '',
@@ -54,18 +54,16 @@ const CheckoutPage = () => {
           });
         } catch (error) {
           console.error('Failed to fetch profile for checkout:', error);
-          // If it fails, just pre-fill the name
-          setShippingAddress(prev => ({ ...prev, name: user.displayName || '' }));
+          setShippingAddress(prev => ({ ...prev, name: user.name || '' }));
         } finally {
           setDataLoading(false);
         }
-      } else if (!user) {
-        setDataLoading(false); // Not logged in, no data to load
+      } else {
+        setDataLoading(false); 
       }
     };
     fetchProfile();
-  }, [user, token]); // Run this effect when user or token becomes available
-  // --- END NEW ---
+  }, [user]); 
 
   const handleInputChange = (e) => {
     setShippingAddress({
@@ -87,11 +85,10 @@ const CheckoutPage = () => {
   const handleCheckout = async () => {
     if (!user) {
       toast.error('Please sign in to continue');
-      navigate('/login'); // Go to login page instead of Google popup
+      navigate('/login');
       return;
     }
 
-    // Validate shipping address
     if (!shippingAddress.name || !shippingAddress.phone || !shippingAddress.address_line1 || 
         !shippingAddress.city || !shippingAddress.state || !shippingAddress.postal_code) {
       toast.error('Please fill all required fields');
@@ -101,7 +98,6 @@ const CheckoutPage = () => {
     setLoading(true);
 
     try {
-      // Load Razorpay script
       const res = await loadRazorpay();
       if (!res) {
         toast.error('Failed to load Razorpay SDK');
@@ -109,7 +105,6 @@ const CheckoutPage = () => {
         return;
       }
 
-      // Create order
       const orderData = {
         items: cart.map(item => ({
           product_id: item.product.id,
@@ -123,34 +118,24 @@ const CheckoutPage = () => {
         total_amount: cartTotal
       };
 
-      const response = await axios.post(
-        `${API}/orders/create-razorpay-order`,
-        orderData,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
+      const response = await api.post('/orders/create-razorpay-order', orderData);
       const { order_id, razorpay_order_id, amount, currency } = response.data;
 
-      // Razorpay options
       const options = {
         key: process.env.REACT_APP_RAZORPAY_KEY_ID,
         amount: amount,
         currency: currency,
-        name: 'Fifth Beryl', // Updated name
+        name: 'Fifth Beryl', 
         description: 'Premium Shirts',
         order_id: razorpay_order_id,
         handler: async function (response) {
           try {
-            await axios.post(
-              `${API}/orders/verify-payment`,
-              {
+            await api.post('/orders/verify-payment', {
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature,
                 order_id: order_id
-              },
-              { headers: { Authorization: `Bearer ${token}` } }
-            );
+            });
             
             clearCart();
             toast.success('Order placed successfully!');
@@ -166,7 +151,7 @@ const CheckoutPage = () => {
           contact: shippingAddress.phone
         },
         theme: {
-          color: '#228B22' // Updated to forest green
+          color: '#000000' // FIX: Updated to Black
         }
       };
 
@@ -182,12 +167,12 @@ const CheckoutPage = () => {
 
   if (!user && !dataLoading) {
     return (
-      <div className="min-h-screen">
+      <div className="min-h-screen bg-white">
         <Navbar />
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
-          <h2 className="text-3xl font-bold mb-4 playfair">Please Sign In</h2>
-          <p className="text-gray-600 mb-8">You need to sign in to proceed with checkout</p>
-          <Button onClick={() => navigate('/login')} className="bg-green-700 hover:bg-green-800">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-32 text-center">
+          <h2 className="text-3xl font-bold mb-4 playfair text-black">Please Sign In</h2>
+          <p className="text-gray-500 mb-8">You need to sign in to proceed with checkout</p>
+          <Button onClick={() => navigate('/login')} className="bg-black hover:bg-gray-800 text-white rounded-none px-8 py-3">
             Sign In / Register
           </Button>
         </div>
@@ -198,11 +183,11 @@ const CheckoutPage = () => {
 
   if (cart.length === 0) {
     return (
-      <div className="min-h-screen">
+      <div className="min-h-screen bg-white">
         <Navbar />
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
-          <h2 className="text-3xl font-bold mb-4 playfair">Your cart is empty</h2>
-          <Button onClick={() => navigate('/products')} className="bg-green-700 hover:bg-green-800">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-32 text-center">
+          <h2 className="text-3xl font-bold mb-4 playfair text-black">Your cart is empty</h2>
+          <Button onClick={() => navigate('/products')} className="bg-black hover:bg-gray-800 text-white rounded-none px-8 py-3">
             Continue Shopping
           </Button>
         </div>
@@ -213,7 +198,7 @@ const CheckoutPage = () => {
   
   if (dataLoading) {
     return (
-        <div className="min-h-screen">
+        <div className="min-h-screen bg-white">
             <Navbar />
             <div className="flex justify-center items-center py-20">
                 <div className="spinner" />
@@ -223,26 +208,26 @@ const CheckoutPage = () => {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-white">
       <Navbar />
       
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <motion.h1
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-4xl font-bold mb-8 playfair"
+          className="text-4xl font-bold mb-10 playfair text-black"
           data-testid="checkout-title"
         >
           Checkout
         </motion.h1>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
           {/* Shipping Form */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-2xl p-6 shadow-lg">
-              <h2 className="text-2xl font-bold mb-6 playfair">Shipping Information</h2>
+            <div className="bg-white p-0">
+              <h2 className="text-2xl font-bold mb-8 playfair text-black border-b border-gray-100 pb-4">Shipping Information</h2>
               
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <div>
                   <Label htmlFor="name">Full Name *</Label>
                   <Input
@@ -252,6 +237,7 @@ const CheckoutPage = () => {
                     onChange={handleInputChange}
                     placeholder="John Doe"
                     data-testid="input-name"
+                    className="bg-white border-gray-300 focus:border-black rounded-none h-12"
                   />
                 </div>
 
@@ -264,6 +250,7 @@ const CheckoutPage = () => {
                     onChange={handleInputChange}
                     placeholder="+91 98765 43210"
                     data-testid="input-phone"
+                    className="bg-white border-gray-300 focus:border-black rounded-none h-12"
                   />
                 </div>
 
@@ -276,6 +263,7 @@ const CheckoutPage = () => {
                     onChange={handleInputChange}
                     placeholder="Street address"
                     data-testid="input-address1"
+                    className="bg-white border-gray-300 focus:border-black rounded-none h-12"
                   />
                 </div>
 
@@ -288,6 +276,7 @@ const CheckoutPage = () => {
                     onChange={handleInputChange}
                     placeholder="Apartment, suite, etc. (optional)"
                     data-testid="input-address2"
+                    className="bg-white border-gray-300 focus:border-black rounded-none h-12"
                   />
                 </div>
 
@@ -301,6 +290,7 @@ const CheckoutPage = () => {
                       onChange={handleInputChange}
                       placeholder="Mumbai"
                       data-testid="input-city"
+                      className="bg-white border-gray-300 focus:border-black rounded-none h-12"
                     />
                   </div>
                   <div>
@@ -312,6 +302,7 @@ const CheckoutPage = () => {
                       onChange={handleInputChange}
                       placeholder="Maharashtra"
                       data-testid="input-state"
+                      className="bg-white border-gray-300 focus:border-black rounded-none h-12"
                     />
                   </div>
                 </div>
@@ -326,6 +317,7 @@ const CheckoutPage = () => {
                       onChange={handleInputChange}
                       placeholder="400001"
                       data-testid="input-postal"
+                      className="bg-white border-gray-300 focus:border-black rounded-none h-12"
                     />
                   </div>
                   <div>
@@ -337,6 +329,7 @@ const CheckoutPage = () => {
                       onChange={handleInputChange}
                       disabled
                       data-testid="input-country"
+                      className="bg-gray-100 border-gray-300 text-gray-500 rounded-none h-12"
                     />
                   </div>
                 </div>
@@ -346,32 +339,32 @@ const CheckoutPage = () => {
 
           {/* Order Summary */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-2xl p-6 shadow-lg sticky top-24">
-              <h2 className="text-2xl font-bold mb-6 playfair">Order Summary</h2>
+            <div className="bg-gray-50 p-8 sticky top-24 border border-gray-100">
+              <h2 className="text-xl font-bold mb-6 playfair text-black">Order Summary</h2>
               
-              <div className="space-y-4 mb-6">
+              <div className="space-y-4 mb-8">
                 {cart.map((item, index) => (
                   <div key={index} className="flex justify-between text-sm">
                     <span className="text-gray-600">
                       {item.product.name} x {item.quantity}
                     </span>
-                    <span className="font-semibold">₹{(item.product.price * item.quantity).toFixed(2)}</span>
+                    <span className="font-medium text-black">₹{(item.product.price * item.quantity).toFixed(2)}</span>
                   </div>
                 ))}
                 
-                <div className="border-t pt-4">
-                  <div className="flex justify-between mb-2">
+                <div className="border-t border-gray-200 pt-4 mt-4 space-y-2">
+                  <div className="flex justify-between mb-2 text-sm">
                     <span className="text-gray-600">Subtotal</span>
-                    <span className="font-semibold">₹{cartTotal.toFixed(2)}</span>
+                    <span className="font-medium text-black">₹{cartTotal.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between mb-2">
+                  <div className="flex justify-between mb-2 text-sm">
                     <span className="text-gray-600">Shipping</span>
-                    <span className="font-semibold text-green-700">Free</span>
+                    <span className="font-medium text-black">Free</span>
                   </div>
-                  <div className="border-t pt-4 mt-4">
-                    <div className="flex justify-between text-xl font-bold">
+                  <div className="border-t border-gray-200 pt-4 mt-2">
+                    <div className="flex justify-between text-lg font-bold text-black">
                       <span>Total</span>
-                      <span className="text-green-700" data-testid="checkout-total">₹{cartTotal.toFixed(2)}</span>
+                      <span data-testid="checkout-total">₹{cartTotal.toFixed(2)}</span>
                     </div>
                   </div>
                 </div>
@@ -380,7 +373,7 @@ const CheckoutPage = () => {
               <Button
                 onClick={handleCheckout}
                 disabled={loading || dataLoading}
-                className="w-full bg-green-700 hover:bg-green-800 text-white py-6 text-lg"
+                className="w-full bg-black hover:bg-gray-800 text-white py-6 text-sm uppercase tracking-wider rounded-none shadow-lg"
                 data-testid="place-order-btn"
               >
                 {loading ? 'Processing...' : 'Place Order'}

@@ -1,29 +1,32 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Edit, Trash2, ArrowLeft, X, Palette } from 'lucide-react';
+import { ArrowLeft, Plus, Edit, Trash2, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 import { useAuth } from '../../context/AuthContext';
-import axios from 'axios';
 import { Button } from '../../components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../components/ui/dialog';
 import { Input } from '../../components/ui/input';
-import { Label } from '../../components/ui/label';
 import { Textarea } from '../../components/ui/textarea';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import FileUpload from '../../components/FileUpload';
+import { Label } from '../../components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '../../components/ui/dialog';
 import { toast } from 'sonner';
-
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+import FileUpload from '../../components/FileUpload';
 
 const AdminProducts = () => {
-  const { token } = useAuth();
+  const { api } = useAuth(); // Use 'api'
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
-  const [activeTab, setActiveTab] = useState('basic');
+
+  // Form State
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -31,7 +34,7 @@ const AdminProducts = () => {
     category: 'shirts',
     featured: false,
     images: [],
-    variants: [{ color: 'White', color_code: '#FFFFFF', sizes: { S: 10, M: 15, L: 20, XL: 10, XXL: 5 } }]
+    variants: [] // Simple variant handling for now
   });
 
   useEffect(() => {
@@ -40,8 +43,8 @@ const AdminProducts = () => {
 
   const fetchProducts = async () => {
     try {
-      const response = await axios.get(`${API}/products`);
-      setProducts(response.data);
+      const response = await api.get('/products?limit=100');
+      setProducts(response.data.products);
     } catch (error) {
       console.error('Error fetching products:', error);
     } finally {
@@ -49,64 +52,45 @@ const AdminProducts = () => {
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    // Validation
-    if (!formData.name.trim()) {
-      toast.error('Product name is required');
-      return;
-    }
-    
-    if (!formData.description.trim()) {
-      toast.error('Product description is required');
-      return;
-    }
-    
-    if (!formData.price || parseFloat(formData.price) <= 0) {
-      toast.error('Valid price is required');
-      return;
-    }
-    
-    if (formData.images.length === 0) {
-      toast.error('At least one product image is required');
-      return;
-    }
-    
-    // Check if all variants have names and at least one size with stock > 0
-    for (let i = 0; i < formData.variants.length; i++) {
-      const variant = formData.variants[i];
-      if (!variant.color.trim()) {
-        toast.error(`Color name is required for variant ${i + 1}`);
-        return;
-      }
-      
-      const hasStock = Object.values(variant.sizes).some(stock => stock > 0);
-      if (!hasStock) {
-        toast.error(`Variant "${variant.color}" must have at least one size with stock > 0`);
-        return;
-      }
-    }
-    
+  const handleImageUpload = (fileData) => {
+    // fileData can be a single object or an array depending on the component
+    const newImages = Array.isArray(fileData) 
+      ? fileData.map(f => ({ url: f.url, alt: f.name }))
+      : [{ url: fileData.url, alt: fileData.name }];
+
+    setFormData(prev => ({
+      ...prev,
+      images: [...prev.images, ...newImages]
+    }));
+  };
+
+  const handleSaveProduct = async () => {
     try {
-      const data = {
+      // Basic validation
+      if (!formData.name || !formData.price) {
+        toast.error('Name and Price are required');
+        return;
+      }
+
+      // Default variant if none added (to prevent backend errors)
+      const productData = {
         ...formData,
-        price: parseFloat(formData.price)
+        price: parseFloat(formData.price),
+        variants: formData.variants.length > 0 ? formData.variants : [
+           { color: "Standard", color_code: "#000000", sizes: { "S": 10, "M": 10, "L": 10, "XL": 10 } }
+        ]
       };
 
       if (editingProduct) {
-        await axios.put(`${API}/products/${editingProduct.id}`, data, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        toast.success('Product updated successfully');
+        await api.put(`/products/${editingProduct.id}`, productData);
+        toast.success('Product updated');
       } else {
-        await axios.post(`${API}/products`, data, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        toast.success('Product created successfully');
+        await api.post('/products', productData);
+        toast.success('Product created');
       }
-
-      setDialogOpen(false);
+      
+      setIsModalOpen(false);
+      setEditingProduct(null);
       resetForm();
       fetchProducts();
     } catch (error) {
@@ -115,19 +99,29 @@ const AdminProducts = () => {
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDeleteProduct = async (id) => {
     if (!window.confirm('Are you sure you want to delete this product?')) return;
-    
     try {
-      await axios.delete(`${API}/products/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.delete(`/products/${id}`);
       toast.success('Product deleted');
       fetchProducts();
     } catch (error) {
-      console.error('Error deleting product:', error);
       toast.error('Failed to delete product');
     }
+  };
+
+  const openEditModal = (product) => {
+    setEditingProduct(product);
+    setFormData({
+      name: product.name,
+      description: product.description,
+      price: product.price,
+      category: product.category,
+      featured: product.featured,
+      images: product.images,
+      variants: product.variants
+    });
+    setIsModalOpen(true);
   };
 
   const resetForm = () => {
@@ -138,290 +132,108 @@ const AdminProducts = () => {
       category: 'shirts',
       featured: false,
       images: [],
-      variants: [{ color: 'White', color_code: '#FFFFFF', sizes: { S: 10, M: 15, L: 20, XL: 10, XXL: 5 } }]
+      variants: []
     });
-    setEditingProduct(null);
-    setActiveTab('basic');
-  };
-
-  const handleEdit = (product) => {
-    setEditingProduct(product);
-    setFormData({
-      name: product.name,
-      description: product.description,
-      price: product.price.toString(),
-      category: product.category,
-      featured: product.featured,
-      images: product.images || [],
-      variants: product.variants || [{ color: 'White', color_code: '#FFFFFF', sizes: { S: 10, M: 15, L: 20, XL: 10, XXL: 5 } }]
-    });
-    setActiveTab('basic');
-    setDialogOpen(true);
-  };
-
-  const addVariant = () => {
-    setFormData({
-      ...formData,
-      variants: [...formData.variants, { color: '', color_code: '#000000', sizes: { S: 0, M: 0, L: 0, XL: 0, XXL: 0 } }]
-    });
-  };
-
-  const removeVariant = (index) => {
-    if (formData.variants.length === 1) {
-      toast.error('At least one color variant is required');
-      return;
-    }
-    const newVariants = formData.variants.filter((_, i) => i !== index);
-    setFormData({ ...formData, variants: newVariants });
-  };
-
-  const updateVariant = (index, field, value) => {
-    const newVariants = [...formData.variants];
-    newVariants[index] = { ...newVariants[index], [field]: value };
-    setFormData({ ...formData, variants: newVariants });
-  };
-
-  const updateVariantSize = (variantIndex, size, stock) => {
-    const newVariants = [...formData.variants];
-    newVariants[variantIndex].sizes[size] = parseInt(stock) || 0;
-    setFormData({ ...formData, variants: newVariants });
-  };
-
-  const handleImageUpload = (files) => {
-    const imageArray = Array.isArray(files) ? files : [files];
-    setFormData({
-      ...formData,
-      images: imageArray.map(file => ({ url: file.data, alt: formData.name || 'Product image' }))
-    });
-  };
-
-  const getTotalStock = (variants) => {
-    return variants.reduce((total, variant) => {
-      return total + Object.values(variant.sizes).reduce((sum, stock) => sum + stock, 0);
-    }, 0);
   };
 
   return (
-    <div className="min-h-screen bg-[#faf8f5]">
+    <div className="min-h-screen bg-white">
       <Navbar />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-4">
             <Link to="/admin">
-              <Button variant="outline" size="icon" data-testid="back-btn">
+              <Button variant="outline" size="icon" className="rounded-none border-black hover:bg-black hover:text-white">
                 <ArrowLeft size={20} />
               </Button>
             </Link>
-            <h1 className="text-4xl font-bold playfair" data-testid="admin-products-title">Manage Products</h1>
+            <h1 className="text-4xl font-bold playfair text-black">Products</h1>
           </div>
-          
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <Dialog open={isModalOpen} onOpenChange={(open) => {
+             setIsModalOpen(open);
+             if(!open) { setEditingProduct(null); resetForm(); }
+          }}>
             <DialogTrigger asChild>
-              <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={resetForm} data-testid="add-product-btn">
-                <Plus size={20} className="mr-2" />
+              <Button className="bg-black text-white hover:bg-gray-800 rounded-none">
+                <Plus className="mr-2" size={20} />
                 Add Product
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white rounded-none border-black">
               <DialogHeader>
-                <DialogTitle>{editingProduct ? 'Edit Product' : 'Add New Product'}</DialogTitle>
+                <DialogTitle className="playfair text-2xl">{editingProduct ? 'Edit Product' : 'New Product'}</DialogTitle>
               </DialogHeader>
-              
-              <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="basic">Basic Info</TabsTrigger>
-                  <TabsTrigger value="images">Images</TabsTrigger>
-                  <TabsTrigger value="variants">Colors & Stock</TabsTrigger>
-                </TabsList>
-
-                <form onSubmit={handleSubmit}>
-                  <TabsContent value="basic" className="space-y-4">
-                    <div>
-                      <Label>Product Name *</Label>
-                      <Input
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        placeholder="Classic Cotton Shirt"
-                        required
-                        data-testid="product-name-input"
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label>Description *</Label>
-                      <Textarea
-                        value={formData.description}
-                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                        placeholder="Premium 100% cotton shirt with perfect fit..."
-                        rows={4}
-                        required
-                        data-testid="product-desc-input"
-                      />
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label>Price (₹) *</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={formData.price}
-                          onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                          placeholder="1299"
-                          required
-                          data-testid="product-price-input"
-                        />
-                      </div>
-                      
-                      <div>
-                        <Label>Category</Label>
-                        <Input
-                          value={formData.category}
-                          onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                          placeholder="shirts"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id="featured"
-                        checked={formData.featured}
-                        onChange={(e) => setFormData({ ...formData, featured: e.target.checked })}
-                        data-testid="product-featured-checkbox"
-                      />
-                      <Label htmlFor="featured">Featured Product (show on homepage)</Label>
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="images" className="space-y-4">
-                    <div>
-                      <Label>Product Images *</Label>
-                      <p className="text-sm text-gray-600 mb-4">
-                        Upload multiple high-quality images. First image will be the main display image.
-                      </p>
-                      <FileUpload
-                        onUpload={handleImageUpload}
-                        accept="image/*"
-                        multiple={true}
-                        maxSize={5}
-                        label="Upload Product Images"
-                      />
-                      {formData.images.length > 0 && (
-                        <div className="mt-4 text-sm text-emerald-600">
-                          ✓ {formData.images.length} image(s) uploaded
-                        </div>
-                      )}
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="variants" className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label>Color Variants & Stock</Label>
-                        <p className="text-sm text-gray-600">Add different colors and set stock for each size</p>
-                      </div>
-                      <Button type="button" onClick={addVariant} variant="outline" size="sm">
-                        <Plus size={16} className="mr-2" />
-                        Add Color
-                      </Button>
-                    </div>
-                    
-                    <div className="space-y-6">
-                      {formData.variants.map((variant, index) => (
-                        <div key={index} className="border rounded-lg p-4 bg-gray-50">
-                          <div className="flex items-center justify-between mb-4">
-                            <h3 className="font-semibold">Color Variant {index + 1}</h3>
-                            {formData.variants.length > 1 && (
-                              <Button
-                                type="button"
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => removeVariant(index)}
-                              >
-                                <X size={16} />
-                              </Button>
-                            )}
-                          </div>
-                          
-                          <div className="grid grid-cols-2 gap-4 mb-4">
-                            <div>
-                              <Label>Color Name *</Label>
-                              <Input
-                                value={variant.color}
-                                onChange={(e) => updateVariant(index, 'color', e.target.value)}
-                                placeholder="White, Navy, Black..."
-                              />
-                            </div>
-                            
-                            <div>
-                              <Label>Color Code *</Label>
-                              <div className="flex gap-2">
-                                <Input
-                                  type="color"
-                                  value={variant.color_code}
-                                  onChange={(e) => updateVariant(index, 'color_code', e.target.value)}
-                                  className="w-16 h-10"
-                                />
-                                <Input
-                                  value={variant.color_code}
-                                  onChange={(e) => updateVariant(index, 'color_code', e.target.value)}
-                                  placeholder="#FFFFFF"
-                                  className="flex-1"
-                                />
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <div>
-                            <Label>Stock by Size</Label>
-                            <div className="grid grid-cols-5 gap-2 mt-2">
-                              {Object.entries(variant.sizes).map(([size, stock]) => (
-                                <div key={size} className="text-center">
-                                  <Label className="text-sm font-semibold">{size}</Label>
-                                  <Input
-                                    type="number"
-                                    min="0"
-                                    value={stock}
-                                    onChange={(e) => updateVariantSize(index, size, e.target.value)}
-                                    className="text-center mt-1"
-                                    placeholder="0"
-                                  />
-                                </div>
-                              ))}
-                            </div>
-                            <div className="text-sm text-gray-600 mt-2">
-                              Total stock for this color: {Object.values(variant.sizes).reduce((sum, stock) => sum + (parseInt(stock) || 0), 0)} units
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    
-                    <div className="bg-emerald-50 p-4 rounded-lg">
-                      <div className="flex items-center gap-2 text-emerald-800">
-                        <Palette size={20} />
-                        <span className="font-semibold">Total Product Stock</span>
-                      </div>
-                      <div className="text-2xl font-bold text-emerald-600 mt-1">
-                        {getTotalStock(formData.variants)} units across all variants
-                      </div>
-                    </div>
-                  </TabsContent>
-
-                  <div className="flex gap-4 mt-6 pt-4 border-t">
-                    <Button type="submit" className="flex-1 bg-emerald-600 hover:bg-emerald-700" data-testid="save-product-btn">
-                      {editingProduct ? 'Update Product' : 'Create Product'}
-                    </Button>
-                    <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                      Cancel
-                    </Button>
+              <div className="space-y-6 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="name">Name</Label>
+                    <Input 
+                      id="name" 
+                      value={formData.name} 
+                      onChange={(e) => setFormData({...formData, name: e.target.value})}
+                      className="rounded-none border-gray-300 focus:border-black"
+                    />
                   </div>
-                </form>
-              </Tabs>
+                  <div>
+                    <Label htmlFor="price">Price (₹)</Label>
+                    <Input 
+                      id="price" 
+                      type="number" 
+                      value={formData.price} 
+                      onChange={(e) => setFormData({...formData, price: e.target.value})}
+                      className="rounded-none border-gray-300 focus:border-black"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea 
+                    id="description" 
+                    value={formData.description} 
+                    onChange={(e) => setFormData({...formData, description: e.target.value})}
+                    className="rounded-none border-gray-300 focus:border-black"
+                  />
+                </div>
+
+                <div>
+                  <Label>Images</Label>
+                  <div className="grid grid-cols-4 gap-2 mb-4 mt-2">
+                    {formData.images.map((img, i) => (
+                      <div key={i} className="relative group">
+                        <img src={img.url} alt="" className="w-full h-20 object-cover border border-gray-200" />
+                        <button 
+                          onClick={() => setFormData(prev => ({...prev, images: prev.images.filter((_, idx) => idx !== i)}))}
+                          className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <FileUpload 
+                    onUpload={handleImageUpload} 
+                    multiple={true} 
+                    label="Add Images"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input 
+                    type="checkbox" 
+                    id="featured" 
+                    checked={formData.featured}
+                    onChange={(e) => setFormData({...formData, featured: e.target.checked})}
+                    className="w-4 h-4 text-black focus:ring-black border-gray-300 rounded"
+                  />
+                  <Label htmlFor="featured">Featured Product</Label>
+                </div>
+
+                <Button onClick={handleSaveProduct} className="w-full bg-black text-white hover:bg-gray-800 rounded-none py-6">
+                  Save Product
+                </Button>
+              </div>
             </DialogContent>
           </Dialog>
         </div>
@@ -431,83 +243,51 @@ const AdminProducts = () => {
             <div className="spinner" />
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="products-list">
-            {products.map((product, index) => (
-              <motion.div
-                key={product.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className="bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow"
-                data-testid={`product-card-${index}`}
-              >
-                <div className="relative">
-                  <img
-                    src={product.images[0]?.url || '/placeholder.jpg'}
-                    alt={product.name}
-                    className="w-full h-48 object-cover"
-                  />
-                  {product.featured && (
-                    <div className="absolute top-2 right-2 bg-emerald-600 text-white px-2 py-1 rounded-full text-xs font-semibold">
-                      Featured
-                    </div>
-                  )}
-                  <div className="absolute top-2 left-2 bg-white/90 px-2 py-1 rounded-full text-xs font-semibold">
-                    {getTotalStock(product.variants)} in stock
-                  </div>
-                </div>
-                
-                <div className="p-6">
-                  <h3 className="text-xl font-semibold mb-2 playfair">{product.name}</h3>
-                  <p className="text-gray-600 text-sm mb-3 line-clamp-2">{product.description}</p>
-                  <p className="text-2xl font-bold text-emerald-600 mb-3">₹{product.price}</p>
-                  
-                  <div className="mb-4">
-                    <div className="flex gap-1 mb-2">
-                      {product.variants?.slice(0, 4).map((variant, i) => (
-                        <div
-                          key={i}
-                          className="w-6 h-6 rounded-full border-2 border-gray-300"
-                          style={{ backgroundColor: variant.color_code }}
-                          title={variant.color}
+          <div className="bg-white border border-gray-200 shadow-sm">
+             <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-200">
+                    <th className="text-left py-4 px-6 font-semibold text-gray-900 uppercase tracking-wider text-sm">Image</th>
+                    <th className="text-left py-4 px-6 font-semibold text-gray-900 uppercase tracking-wider text-sm">Name</th>
+                    <th className="text-left py-4 px-6 font-semibold text-gray-900 uppercase tracking-wider text-sm">Price</th>
+                    <th className="text-left py-4 px-6 font-semibold text-gray-900 uppercase tracking-wider text-sm">Variants</th>
+                    <th className="text-right py-4 px-6 font-semibold text-gray-900 uppercase tracking-wider text-sm">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {products.map((product) => (
+                    <motion.tr 
+                      key={product.id}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="border-b border-gray-100 hover:bg-gray-50"
+                    >
+                      <td className="py-4 px-6">
+                        <img 
+                          src={product.images[0]?.url || '/placeholder.jpg'} 
+                          alt={product.name} 
+                          className="w-12 h-12 object-cover border border-gray-200"
                         />
-                      ))}
-                      {product.variants?.length > 4 && (
-                        <div className="text-xs text-gray-500 flex items-center ml-2">
-                          +{product.variants.length - 4} more
+                      </td>
+                      <td className="py-4 px-6 font-medium text-black">{product.name}</td>
+                      <td className="py-4 px-6 text-black">₹{product.price}</td>
+                      <td className="py-4 px-6 text-gray-600">{product.variants.length} variants</td>
+                      <td className="py-4 px-6 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button variant="ghost" size="icon" onClick={() => openEditModal(product)}>
+                            <Edit size={18} className="text-gray-600 hover:text-black" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleDeleteProduct(product.id)}>
+                            <Trash2 size={18} className="text-red-500 hover:text-red-700" />
+                          </Button>
                         </div>
-                      )}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {product.variants?.length} color{product.variants?.length !== 1 ? 's' : ''}
-                    </div>
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEdit(product)}
-                      className="flex-1"
-                      data-testid={`edit-btn-${index}`}
-                    >
-                      <Edit size={16} className="mr-2" />
-                      Edit
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleDelete(product.id)}
-                      className="flex-1"
-                      data-testid={`delete-btn-${index}`}
-                    >
-                      <Trash2 size={16} className="mr-2" />
-                      Delete
-                    </Button>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
+                      </td>
+                    </motion.tr>
+                  ))}
+                </tbody>
+              </table>
+             </div>
           </div>
         )}
       </div>

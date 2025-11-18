@@ -1,23 +1,21 @@
+// src/components/ProductCard.js
 import { motion } from 'framer-motion';
 import { Heart, ShoppingCart, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-// useTheme is no longer needed for styles
-// import { useTheme } from '../context/ThemeContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useAuth } from '../context/AuthContext';
 
 const ProductCard = ({ product, index }) => {
   const navigate = useNavigate();
-  // const { isDark } = useTheme(); // No longer needed
   const [isHovered, setIsHovered] = useState(false);
-  const { user } = useAuth();
+  const { currentUser } = useAuth(); // Updated to correct variable name
   const { toggleWishlist, isItemInWishlist, loading: wishlistLoading } = useWishlist();
   const isWishlisted = isItemInWishlist(product.id);
 
   const handleWishlistToggle = (e) => {
-    e.stopPropagation(); // Prevent card click
-    if (!user) {
+    e.stopPropagation(); 
+    if (!currentUser) {
         navigate('/login');
         return;
     }
@@ -34,9 +32,9 @@ const ProductCard = ({ product, index }) => {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 30 }}
+      initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.1, duration: 0.6 }}
+      transition={{ delay: index * 0.05, duration: 0.5 }}
       onHoverStart={() => setIsHovered(true)}
       onHoverEnd={() => setIsHovered(false)}
       className="group cursor-pointer"
@@ -44,172 +42,107 @@ const ProductCard = ({ product, index }) => {
       data-testid={`featured-product-${index}`}
     >
       <motion.div
-        whileHover={{ 
-          y: -12,
-          scale: 1.02,
-          transition: { duration: 0.3, ease: "easeOut" }
-        }}
-        // --- MODIFIED: Removed dark theme classes ---
-        className={`relative overflow-hidden rounded-2xl transition-all duration-500 bg-white shadow-lg hover:shadow-2xl hover:shadow-green-700/20`}
+        whileHover={{ y: -8 }}
+        className="relative overflow-hidden bg-white border border-gray-100 hover:shadow-xl hover:shadow-black/5 transition-all duration-500"
       >
         {/* Image Container */}
-        <div className="relative overflow-hidden aspect-square bg-white">
+        <div className="relative overflow-hidden aspect-[4/5] bg-gray-50">
           <motion.img
-            src={product.images[0]?.url.replace('/upload/', '/upload/w_400,q_auto,f_auto/') || '/placeholder.jpg'}
+            src={product.images[0]?.url.replace('/upload/', '/upload/w_500,q_auto,f_auto/') || '/placeholder.jpg'}
             alt={product.name}
-            className="w-full h-full object-contain"
+            className="w-full h-full object-cover mix-blend-multiply"
             initial={{ scale: 1 }}
-            whileHover={{ scale: 1.1 }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
+            whileHover={{ scale: 1.05 }}
+            transition={{ duration: 0.7, ease: "easeOut" }}
           />
           
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: isHovered ? 1 : 0 }}
-            transition={{ duration: 0.3 }}
-            className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"
-          />
-          
-          <div className="absolute top-4 left-4 flex flex-col gap-2">
+          {/* Badges */}
+          <div className="absolute top-3 left-3 flex flex-col gap-2">
             {product.featured && (
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.2, type: "spring", stiffness: 500 }}
-                className="bg-gradient-to-r from-green-600 to-green-700 text-white px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1"
-              >
-                <Sparkles size={12} />
+              <div className="bg-black text-white px-3 py-1 text-[10px] uppercase tracking-widest font-bold flex items-center gap-1">
+                <Sparkles size={10} />
                 Featured
-              </motion.div>
-            )}
-            
-            {totalStock === 0 && (
-              <div className="bg-red-500 text-white px-3 py-1 rounded-full text-xs font-semibold">
-                Out of Stock
               </div>
             )}
             
-            {totalStock > 0 && totalStock < 10 && (
-              <div className="bg-orange-500 text-white px-3 py-1 rounded-full text-xs font-semibold">
-                Only {totalStock} left
+            {totalStock === 0 && (
+              <div className="bg-gray-200 text-gray-600 px-3 py-1 text-[10px] uppercase tracking-widest font-bold">
+                Sold Out
+              </div>
+            )}
+            
+            {totalStock > 0 && totalStock < 5 && (
+              <div className="bg-red-600 text-white px-3 py-1 text-[10px] uppercase tracking-widest font-bold">
+                Low Stock
               </div>
             )}
           </div>
           
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ 
-              opacity: isHovered || isWishlisted ? 1 : 0, 
-              scale: isHovered ? 1 : 0.8
-            }}
-            transition={{ duration: 0.3, delay: 0.1 }}
-            className="absolute top-4 right-4"
+          {/* Wishlist Button */}
+          <motion.button
+            initial={{ opacity: 0 }}
+            animate={{ opacity: isHovered || isWishlisted ? 1 : 0 }}
+            className="absolute top-3 right-3 p-2 bg-white rounded-full shadow-md hover:bg-gray-50 transition-colors"
+            onClick={handleWishlistToggle}
+            disabled={wishlistLoading}
           >
-            <motion.button
-              whileHover={{ scale: 1.1, rotate: 5 }}
-              whileTap={{ scale: 0.9 }}
-              className={`bg-white/90 backdrop-blur-sm p-2 rounded-full shadow-lg hover:bg-white transition-all ${wishlistLoading ? 'cursor-not-allowed' : ''}`}
-              onClick={handleWishlistToggle}
-              disabled={wishlistLoading}
+            <Heart 
+              size={18} 
+              className={`transition-colors ${isWishlisted ? 'fill-black text-black' : 'text-black'}`} 
+              strokeWidth={1.5}
+            />
+          </motion.button>
+
+          {/* Quick Add Button (Visible on Hover) */}
+          <motion.div
+            initial={{ y: '100%' }}
+            animate={{ y: isHovered ? 0 : '100%' }}
+            transition={{ duration: 0.3 }}
+            className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-white/90 to-transparent"
+          >
+             <button
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/product/${product.id}`);
+              }}
+              disabled={totalStock === 0}
+              className="w-full py-3 bg-black text-white text-sm font-medium tracking-wide hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
             >
-              <Heart 
-                size={16} 
-                className={`transition-all ${isWishlisted ? 'fill-red-500 text-red-500' : 'text-gray-600 hover:text-red-500'}`} 
-              />
-            </motion.button>
+              <ShoppingCart size={16} />
+              {totalStock === 0 ? 'Out of Stock' : 'View Details'}
+            </button>
           </motion.div>
         </div>
         
         {/* Content */}
-        <div className="p-6">
-          <motion.h3 
-            // --- MODIFIED: Removed dark theme classes ---
-            className={`text-xl font-semibold mb-2 playfair transition-colors text-gray-900 group-hover:text-green-700`}
-            animate={{ 
-              scale: isHovered ? 1.02 : 1,
-            }}
-            transition={{ duration: 0.3 }}
-          >
+        <div className="p-4">
+          <h3 className="text-lg font-medium mb-1 playfair text-black group-hover:underline decoration-1 underline-offset-4">
             {product.name}
-          </motion.h3>
+          </h3>
           
-          {/* --- MODIFIED: Added font-serif and removed dark theme classes --- */}
-          <p className={`font-serif mb-3 line-clamp-2 text-sm transition-colors text-gray-600`}>
-            {product.description}
-          </p>
-          
-          <motion.div 
-            className="flex items-center justify-between mb-4"
-            animate={{ y: isHovered ? -2 : 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            <span className="text-2xl font-bold text-green-700">
+          <div className="flex items-center justify-between mt-2">
+            <span className="text-lg font-semibold text-black">
               ₹{product.price}
             </span>
             
-            <div className="flex gap-1">
+            {/* Color Swatches */}
+            <div className="flex gap-1.5">
               {product.variants?.slice(0, 3).map((variant, i) => (
-                <motion.div
+                <div
                   key={i}
-                  initial={{ scale: 0.8, opacity: 0.8 }}
-                  animate={{ 
-                    scale: isHovered ? 1.1 : 0.9,
-                    opacity: isHovered ? 1 : 0.8
-                  }}
-                  transition={{ delay: i * 0.05 }}
-                  className="w-6 h-6 rounded-full border-2 border-gray-300 shadow-sm"
+                  className="w-4 h-4 rounded-full border border-gray-200 shadow-sm"
                   style={{ backgroundColor: variant.color_code }}
                   title={variant.color}
                 />
               ))}
               {product.variants?.length > 3 && (
-                // --- MODIFIED: Removed dark theme classes ---
-                <div className={`text-xs flex items-center ml-1 text-gray-500`}>
+                <div className="text-[10px] text-gray-400 flex items-center">
                   +{product.variants.length - 3}
                 </div>
               )}
             </div>
-          </motion.div>
-          
-          {/* --- MODIFIED: Removed dark theme classes --- */}
-          <div className={`text-center text-xs mb-4 text-gray-500`}>
-            {totalStock > 0 ? `${totalStock} in stock` : 'Out of stock'}
           </div>
-          
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ 
-              opacity: isHovered ? 1 : 0,
-              y: isHovered ? 0 : 10
-            }}
-            transition={{ duration: 0.3, delay: 0.1 }}
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate(`/product/${product.id}`);
-            }}
-            disabled={totalStock === 0}
-            className={`
-              w-full py-2.5 px-4 rounded-xl font-semibold transition-all duration-300
-              flex items-center justify-center gap-2 text-sm
-              ${totalStock === 0 
-                ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                : 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shadow-lg hover:shadow-xl'
-              }
-            `}
-          >
-            <ShoppingCart size={16} />
-            {totalStock === 0 ? 'Out of Stock' : 'View Details'}
-          </motion.button>
         </div>
-        
-        <motion.div
-          initial={{ x: '-100%' }}
-          animate={{ x: isHovered ? '100%' : '-100%' }}
-          transition={{ duration: 0.8, ease: "easeInOut" }}
-          className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent pointer-events-none"
-        />
       </motion.div>
     </motion.div>
   );
