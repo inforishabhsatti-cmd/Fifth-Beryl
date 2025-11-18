@@ -1,31 +1,33 @@
 import React, { useEffect, useState } from 'react';
-// Removed: Loader2 import as it is no longer used
+import { motion } from 'framer-motion';
 
 /**
- * Full-screen splash screen with a vertical "shutter" open effect (down to up, transparent background).
+ * Full-screen black shutter that slides from bottom to top, revealing
+ * the already-loaded application content directly beneath it.
  */
 const SplashShutter = ({ onComplete }) => {
   const [isAnimating, setIsAnimating] = useState(false);
-  const [isDone, setIsDone] = useState(false);
   
-  // Using the reliable path for the favicon/logo
-  const LOGO_SRC = '/assets/favicon.png'; 
   const BRAND_NAME = 'FIFTH BERYL';
+  const LOGO_SRC = 'assets/SHUTTER.png'; 
+  
+  // Timing Configuration for the dramatic slide-up effect
+  const DELAY_BEFORE_SLIDE_MS = 1200; // Time the logo is displayed statically
+  const SLIDE_DURATION_MS = 2500;      // *** UPDATED to 2500ms (2.5 seconds) ***
+  const TOTAL_UNMOUNT_TIME_MS = DELAY_BEFORE_SLIDE_MS + SLIDE_DURATION_MS + 50; 
 
   useEffect(() => {
-    // 1. Wait a longer moment (1200ms) before the slide-up animation starts.
+    // 1. Wait the initial delay
     const startAnimationTimer = setTimeout(() => {
-      setIsAnimating(true); // Triggers the shutter-open CSS transition
-    }, 1200); // Delay is 1200ms
+      setIsAnimating(true); // Triggers the shutter-open (slide-up) CSS transition
+    }, DELAY_BEFORE_SLIDE_MS);
 
-    // 2. Set the total duration for the component to unmount. 
-    // This is 1200ms delay + 1s CSS transition + 100ms buffer = 2300ms.
+    // 2. Unmount the component completely after the slide-up animation is done
     const endTimer = setTimeout(() => {
-      setIsDone(true); // Triggers opacity fade out in CSS
       if (onComplete) {
-        setTimeout(onComplete, 600); 
+        onComplete(); 
       }
-    }, 2300); 
+    }, TOTAL_UNMOUNT_TIME_MS); 
 
     return () => {
       clearTimeout(startAnimationTimer);
@@ -33,33 +35,80 @@ const SplashShutter = ({ onComplete }) => {
     };
   }, [onComplete]);
 
-  // Use the isDone state to control the overall fade-out of the whole splash container
+  // Define the custom CSS for the sliding animation (pure black background, dramatic transition)
+  const customCss = `
+    /* Container: Full screen, fixed, high z-index. Crucial for overlaying the entire app. */
+    .shutter-glass-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: 9999; 
+        pointer-events: auto;
+        background-color: transparent; /* No flicker on unmount */
+    }
+
+    /* Shutter Panel: The element that starts at the bottom (translateY(0)) and slides UP */
+    .shutter-slide-up {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 100%; 
+        background-color: #000; /* Pure black shutter */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transform: translateY(0);
+        /* *** UPDATED CSS TRANSITION TO 2500ms *** */
+        transition: transform ${SLIDE_DURATION_MS}ms cubic-bezier(0.77, 0, 0.175, 1); 
+    }
+
+    /* Target state: panel moves up by its full height */
+    .shutter-open {
+        transform: translateY(-100%);
+    }
+
+    .shutter-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+  `;
+
   return (
-    <div className={`shutter-glass-container ${isDone ? 'shutter-fade-out' : ''}`}>
+    <div className="shutter-glass-container"> 
         
-      {/* This element slides UP (It is the content container) */}
+      {/* Black Shutter Panel */}
       <div className={`shutter-slide-up ${isAnimating ? 'shutter-open' : ''}`}>
         
-        {/* Content is now directly inside the transparent shutter panel */}
         <div className="shutter-content"> 
           
-          {/* LOGO (Vertically centered above text) */}
-          <img 
+          {/* Logo (Enlarged) */}
+          <motion.img 
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.3, duration: 0.5 }}
             src={LOGO_SRC} 
             alt={`${BRAND_NAME} Logo`} 
-            className="w-32 h-32 mx-auto mb-4" 
-            onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }} 
+            className="w-40 h-40 md:w-56 md:h-56 mx-auto mb-8 drop-shadow-lg" 
+            onError={(e) => { 
+                e.target.onerror = null; 
+                e.target.style.display = 'none'; // Hide image if path fails
+            }} 
           />
           
-          {/* Store Name in one line - FIX: whitespace-nowrap ensures FIFTH BERYL stays on one line */}
-          <h1 className="text-6xl md:text-8xl font-bold font-alegreya-sc tracking-widest uppercase text-black leading-none whitespace-nowrap">
+          {/* Brand Name */}
+          <h1 className="text-5xl sm:text-7xl md:text-8xl font-extrabold tracking-widest uppercase text-white drop-shadow-xl leading-none whitespace-nowrap font-serif">
             {BRAND_NAME}
           </h1>
-          
-          {/* Tagline and loading indicator are removed */}
         </div>
-        
       </div>
+
+      {/* Inject custom CSS */}
+      <style>{customCss}</style>
     </div>
   );
 };
