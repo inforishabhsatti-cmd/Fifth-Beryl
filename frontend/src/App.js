@@ -1,9 +1,10 @@
+// src/App.js
 import './App.css';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { ThemeProvider } from './context/ThemeContext';
-import { WishlistProvider } from './context/WishlistContext'; // <-- Import WishlistProvider
+import { WishlistProvider } from './context/WishlistContext';
 import { Toaster } from 'sonner';
 
 // Page Imports
@@ -15,7 +16,8 @@ import CheckoutPage from './pages/CheckoutPage';
 import OrdersPage from './pages/OrdersPage';
 import LoginPage from './pages/LoginPage';
 import ProfilePage from './pages/ProfilePage';
-import WishlistPage from './pages/WishlistPage'; // <-- THIS WAS THE MISSING IMPORT
+import WishlistPage from './pages/WishlistPage';
+import GoogleAuthCallback from './components/GoogleAuthCallback'; // <-- IMPORT NEW COMPONENT
 
 // Admin Imports
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -31,7 +33,7 @@ function App() {
     <ThemeProvider>
       <AuthProvider>
         <CartProvider>
-          <WishlistProvider> {/* <-- This provider wraps the app */}
+          <WishlistProvider>
             <BrowserRouter>
               <Toaster position="top-right" richColors />
               <Routes>
@@ -44,7 +46,11 @@ function App() {
                 <Route path="/orders" element={<OrdersPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/login" element={<LoginPage />} />
-                <Route path="/wishlist" element={<WishlistPage />} /> {/* <-- This route needs the import */}
+                <Route path="/wishlist" element={<WishlistPage />} />
+                
+                {/* --- NEW: Google Callback Route --- */}
+                <Route path="/auth/callback" element={<GoogleAuthCallback />} />
+
 
                 {/* --- Admin Protected Routes --- */}
                 <Route element={<AdminRoute />}>

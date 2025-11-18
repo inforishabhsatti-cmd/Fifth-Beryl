@@ -19,11 +19,12 @@ import {
 import { Chrome } from 'lucide-react';
 
 export default function LoginPage() {
+  const [name, setName] = useState(''); // Added for sign up
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   const [error, setError] = useState('');
-  const [loadingEmail, setLoadingEmail] = useState(false);
+  const [loading, setLoading] = useState(false); // One loading state
   const [loadingGoogle, setLoadingGoogle] = useState(false);
 
   const { signUp, logIn, signInWithGoogle, currentUser } = useAuth();
@@ -36,73 +37,40 @@ export default function LoginPage() {
     }
   }, [currentUser, navigate]);
 
-  // ---- Helper: map Firebase error codes to friendly messages ----
-  const getFriendlyErrorMessage = (code, fallbackMessage) => {
-    switch (code) {
-      case 'auth/invalid-email':
-        return 'Invalid email address format.';
-      case 'auth/user-not-found':
-      case 'auth/wrong-password':
-      case 'auth/invalid-credential':
-        return 'Incorrect email or password.';
-      case 'auth/email-already-in-use':
-        return 'An account with this email already exists.';
-      case 'auth/weak-password':
-        return 'Password must be at least 6 characters long.';
-      case 'auth/operation-not-allowed':
-        return 'This sign-in method is not enabled. Please contact support.';
-      case 'auth/popup-blocked':
-        return 'Popup was blocked by the browser. Please allow popups and try again.';
-      case 'auth/popup-closed-by-user':
-        return 'You closed the sign-in popup before completing login.';
-      case 'auth/unauthorized-domain':
-        return 'This domain is not authorized for Google sign-in in Firebase settings.';
-      default:
-        if (fallbackMessage) return fallbackMessage;
-        return 'An unknown error occurred. Please try again.';
-    }
-  };
-
-  // ---- EMAIL LOGIN / SIGNUP ----
+  // --- REWRITTEN: Email Login / Signup ---
   const handleEmailSubmit = async (e, action) => {
     e.preventDefault();
     setError('');
-    setLoadingEmail(true);
+    setLoading(true);
 
     try {
       if (action === 'login') {
         await logIn(email, password);
       } else {
-        await signUp(email, password);
+        await signUp(name, email, password); // Pass name to signup
       }
       navigate('/profile');
     } catch (err) {
-      console.error('Email auth error:', err);
-      const friendly = getFriendlyErrorMessage(err.code, err.message);
-      setError(`${friendly} (${err.code ?? 'no-code'})`);
+      console.error('Auth error:', err);
+      // Get error message from backend response
+      const friendly =
+        err.response?.data?.detail || 'An unknown error occurred. Please try again.';
+      setError(friendly);
     } finally {
-      setLoadingEmail(false);
+      setLoading(false);
     }
   };
 
-  // ---- GOOGLE SIGN-IN (redirect flow) ----
+  // --- REWRITTEN: Google Sign-In ---
   const handleGoogleSignIn = async () => {
     setError('');
     setLoadingGoogle(true);
-
-    try {
-      // This will trigger a full-page redirect to Google.
-      // After successful sign-in, app will reload and onAuthStateChanged will fire.
-      await signInWithGoogle();
-    } catch (err) {
-      console.error('Google sign-in redirect error:', err);
-      const friendly = getFriendlyErrorMessage(err.code, err.message);
-      setError(`${friendly} (${err.code ?? 'no-code'})`);
-      setLoadingGoogle(false);
-    }
+    // No try/catch needed here, as it's a full page redirect.
+    // The backend handles errors on the callback.
+    await signInWithGoogle();
   };
 
-  const isAnyLoading = loadingEmail || loadingGoogle;
+  const isAnyLoading = loading || loadingGoogle;
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">
@@ -161,7 +129,7 @@ export default function LoginPage() {
                   className="w-full"
                   disabled={isAnyLoading}
                 >
-                  {loadingEmail ? 'Signing In...' : 'Sign In'}
+                  {loading ? 'Signing In...' : 'Sign In'}
                 </Button>
 
                 <Button
@@ -172,7 +140,7 @@ export default function LoginPage() {
                   disabled={isAnyLoading}
                 >
                   <Chrome className="w-4 h-4 mr-2" />
-                  {loadingGoogle ? 'Redirecting to Google...' : 'Sign In with Google'}
+                  {loadingGoogle ? 'Redirecting...' : 'Sign In with Google'}
                 </Button>
               </CardFooter>
             </form>
@@ -186,7 +154,7 @@ export default function LoginPage() {
               <CardHeader>
                 <CardTitle>Create Account</CardTitle>
                 <CardDescription>
-                  Enter your email and password to get started.
+                  Enter your details to get started.
                 </CardDescription>
               </CardHeader>
 
@@ -197,6 +165,19 @@ export default function LoginPage() {
                     <AlertDescription>{error}</AlertDescription>
                   </Alert>
                 )}
+
+                {/* --- NEW: Name Field --- */}
+                <div className="space-y-2">
+                  <Label htmlFor="signup-name">Name</Label>
+                  <Input
+                    id="signup-name"
+                    type="text"
+                    placeholder="Your Name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                  />
+                </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="signup-email">Email</Label>
@@ -215,6 +196,7 @@ export default function LoginPage() {
                   <Input
                     id="signup-password"
                     type="password"
+                    placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -228,7 +210,17 @@ export default function LoginPage() {
                   className="w-full"
                   disabled={isAnyLoading}
                 >
-                  {loadingEmail ? 'Creating Account...' : 'Sign Up'}
+                  {loading ? 'Creating Account...' : 'Sign Up'}
+                </Button>
+                 <Button
+                  variant="outline"
+                  type="button"
+                  className="w-full"
+                  onClick={handleGoogleSignIn}
+                  disabled={isAnyLoading}
+                >
+                  <Chrome className="w-4 h-4 mr-2" />
+                  {loadingGoogle ? 'Redirecting...' : 'Sign Up with Google'}
                 </Button>
               </CardFooter>
             </form>
