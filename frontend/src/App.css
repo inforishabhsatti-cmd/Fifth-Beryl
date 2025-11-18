@@ -125,25 +125,25 @@
   box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
 }
 
-/* --- GLOBAL APP CONTENT BLUR FILTERS (Applied in App.js) --- */
+/* --- GLOBAL APP CONTENT VISIBILITY --- */
 .app-content-blur {
-    /* Set filter transition for smooth blur/unblur */
-    transition: filter 0.8s ease-in-out, opacity 0.5s ease; 
-    filter: blur(8px); /* Blur the underlying app content */
-    pointer-events: none; /* Disable interaction while splash screen is active */
-    opacity: 1; /* Keep content visible for blur effect */
+    /* HIDE CONTENT underneath the opaque black shutter */
+    transition: opacity 0.5s ease; 
+    opacity: 0; 
+    pointer-events: none;
+    filter: none;
 }
 
 .app-content-unblur {
-    transition: filter 0.5s ease-in-out, opacity 0.5s ease;
-    filter: blur(0);
-    pointer-events: auto;
+    transition: opacity 0.5s ease;
     opacity: 1;
+    pointer-events: auto;
+    filter: none;
 }
 
-/* --- FULL-PAGE SHUTTER SPLASH SCREEN (DOWN-UP WIPE) --- */
+/* --- FULL-PAGE SHUTTER SPLASH SCREEN (DOWN-UP WIPE - BLACK) --- */
 
-/* Base container for the full screen effect (no background, only fade out) */
+/* Base container (The entire screen starts black, showing white text) */
 .shutter-glass-container {
     position: fixed;
     top: 0;
@@ -151,7 +151,11 @@
     width: 100vw;
     height: 100vh;
     z-index: 9999;
+    /* Transition opacity for smooth unmounting */
     transition: opacity 0.5s ease-out; 
+    
+    /* CRITICAL: Set the entire container background to black */
+    background-color: black;
 }
 
 .shutter-glass-container.shutter-fade-out {
@@ -159,7 +163,7 @@
     pointer-events: none;
 }
 
-/* The single shutter panel (CRITICAL: Transparent, slides UP) */
+/* The sliding panel (Wipes AWAY the black shutter to reveal the page background) */
 .shutter-slide-up {
     position: absolute;
     bottom: 0;
@@ -167,8 +171,8 @@
     width: 100%;
     height: 100%;
     
-    /* Make the sliding panel transparent to show the blurred background */
-    background-color: transparent !important; 
+    /* CRITICAL: Set the sliding panel background to the page background color (white in your light theme) */
+    background-color: hsl(var(--background)); 
     backdrop-filter: none !important; 
     -webkit-backdrop-filter: none !important;
 
@@ -184,10 +188,11 @@
 
 /* Final position: Slide up and off-screen by 100% of its height */
 .shutter-slide-up.shutter-open {
+    /* Shutter slides up to reveal the page content */
     transform: translateY(-100%); 
 }
 
-/* Shutter content - now directly receiving the text/logo */
+/* Shutter content - where the logo/text resides */
 .shutter-content {
     /* Uses flex for centered column stacking */
     display: flex;
@@ -197,5 +202,4 @@
     text-align: center;
     width: 90%;
     max-width: 500px;
-    /* Removed all visual effects (background, padding, etc.) previously from .glass */
 }
