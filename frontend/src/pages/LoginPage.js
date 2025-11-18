@@ -16,7 +16,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Chrome } from 'lucide-react';
+// Note: 'Chrome' icon import is removed
 
 export default function LoginPage() {
   const [name, setName] = useState(''); // Added for sign up
@@ -24,10 +24,10 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
 
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false); // One loading state
-  const [loadingGoogle, setLoadingGoogle] = useState(false);
+  const [loading, setLoading] = useState(false);
+  // Note: 'loadingGoogle' state is removed
 
-  const { signUp, logIn, signInWithGoogle, currentUser } = useAuth();
+  const { signUp, logIn, currentUser } = useAuth();
   const navigate = useNavigate();
 
   // If user is already logged in, send to /profile
@@ -37,7 +37,7 @@ export default function LoginPage() {
     }
   }, [currentUser, navigate]);
 
-  // --- REWRITTEN: Email Login / Signup ---
+  // --- Updated: Email Login / Signup ---
   const handleEmailSubmit = async (e, action) => {
     e.preventDefault();
     setError('');
@@ -52,28 +52,25 @@ export default function LoginPage() {
       navigate('/profile');
     } catch (err) {
       console.error('Auth error:', err);
-      // Get error message from backend response
       const friendly =
-        err.response?.data?.detail || 'An unknown error occurred. Please try again.';
+        err.response?.data?.detail ||
+        'An unknown error occurred. Please try again.';
       setError(friendly);
     } finally {
       setLoading(false);
     }
   };
 
-  // --- REWRITTEN: Google Sign-In ---
-  const handleGoogleSignIn = async () => {
-    setError('');
-    setLoadingGoogle(true);
-    // No try/catch needed here, as it's a full page redirect.
-    // The backend handles errors on the callback.
-    await signInWithGoogle();
-  };
-
-  const isAnyLoading = loading || loadingGoogle;
+  // Note: 'handleGoogleSignIn' function is removed
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-background">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
+      {/* Brand Logo/Name */}
+      <div className="mb-8 text-center">
+        <h1 className="text-4xl font-bold tracking-tight">Fifth Beryl</h1>
+        <p className="text-muted-foreground">Welcome to the exclusive collection</p>
+      </div>
+
       <Tabs defaultValue="login" className="w-full max-w-sm">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="login">Login</TabsTrigger>
@@ -124,24 +121,10 @@ export default function LoginPage() {
               </CardContent>
 
               <CardFooter className="flex flex-col gap-4">
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={isAnyLoading}
-                >
+                <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? 'Signing In...' : 'Sign In'}
                 </Button>
-
-                <Button
-                  variant="outline"
-                  type="button"
-                  className="w-full"
-                  onClick={handleGoogleSignIn}
-                  disabled={isAnyLoading}
-                >
-                  <Chrome className="w-4 h-4 mr-2" />
-                  {loadingGoogle ? 'Redirecting...' : 'Sign In with Google'}
-                </Button>
+                {/* Google Button Removed */}
               </CardFooter>
             </form>
           </Card>
@@ -166,7 +149,6 @@ export default function LoginPage() {
                   </Alert>
                 )}
 
-                {/* --- NEW: Name Field --- */}
                 <div className="space-y-2">
                   <Label htmlFor="signup-name">Name</Label>
                   <Input
@@ -205,23 +187,10 @@ export default function LoginPage() {
               </CardContent>
 
               <CardFooter className="flex flex-col gap-4">
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={isAnyLoading}
-                >
+                <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? 'Creating Account...' : 'Sign Up'}
                 </Button>
-                 <Button
-                  variant="outline"
-                  type="button"
-                  className="w-full"
-                  onClick={handleGoogleSignIn}
-                  disabled={isAnyLoading}
-                >
-                  <Chrome className="w-4 h-4 mr-2" />
-                  {loadingGoogle ? 'Redirecting...' : 'Sign Up with Google'}
-                </Button>
+                {/* Google Button Removed */}
               </CardFooter>
             </form>
           </Card>

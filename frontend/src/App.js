@@ -17,7 +17,7 @@ import OrdersPage from './pages/OrdersPage';
 import LoginPage from './pages/LoginPage';
 import ProfilePage from './pages/ProfilePage';
 import WishlistPage from './pages/WishlistPage';
-import GoogleAuthCallback from './components/GoogleAuthCallback'; // <-- IMPORT NEW COMPONENT
+// Removed: GoogleAuthCallback import
 
 // Admin Imports
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -48,8 +48,7 @@ function App() {
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/wishlist" element={<WishlistPage />} />
                 
-                {/* --- NEW: Google Callback Route --- */}
-                <Route path="/auth/callback" element={<GoogleAuthCallback />} />
+                {/* Removed: Google Callback Route */}
 
 
                 {/* --- Admin Protected Routes --- */}

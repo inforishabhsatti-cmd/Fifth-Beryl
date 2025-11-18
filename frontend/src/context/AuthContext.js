@@ -36,8 +36,6 @@ export function AuthProvider({ children }) {
     () => localStorage.getItem('authToken') || null
   );
 
-  // --- NEW AUTH FUNCTIONS ---
-
   // Effect to load user on startup if token exists
   useEffect(() => {
     const loadUserFromToken = async () => {
@@ -68,7 +66,6 @@ export function AuthProvider({ children }) {
   }, [token]); // This effect runs when the token state changes
 
   async function signUp(name, email, password) {
-    // Note: Our new endpoint also takes a 'name'
     const response = await api.post('/auth/register', { name, email, password });
     // After successful signup, log them in
     await logIn(email, password);
@@ -95,19 +92,7 @@ export function AuthProvider({ children }) {
     setIsAdmin(false);
   }
 
-  async function signInWithGoogle() {
-    // This now just redirects to our backend login route
-    const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
-    window.location.href = `${backendUrl}/api/auth/google/login`;
-  }
-
-  // --- NEW: Function to handle the Google OAuth callback ---
-  const handleGoogleCallback = (token) => {
-    localStorage.setItem('authToken', token);
-    setToken(token);
-    setAuthToken(token);
-    // setToken will trigger the useEffect to fetch user
-  };
+  // Google Sign-In functions completely removed
 
   const value = {
     currentUser,
@@ -117,8 +102,7 @@ export function AuthProvider({ children }) {
     signUp,
     logIn,
     logOut,
-    signInWithGoogle,
-    handleGoogleCallback, // Expose the new callback handler
+    // 'signInWithGoogle' and 'handleGoogleCallback' removed
   };
 
   return (

@@ -12,7 +12,6 @@ from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from typing import List, Optional, Dict, Any
 import uuid
 from datetime import datetime, timezone, timedelta
-# (Firebase imports are correctly removed)
 import razorpay
 import base64
 import json
@@ -23,34 +22,30 @@ import cloudinary.api
 from pymongo import ASCENDING, DESCENDING
 import math
 
-# --- NEW IMPORTS FOR CUSTOM AUTH ---
+# --- IMPORTS FOR CUSTOM AUTH ---
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from google.oauth2 import id_token
-from google.auth.transport import requests as google_requests
-from google_auth_oauthlib.flow import Flow as GoogleFlow
+# Removed Google-related imports
 import httpx
-# --- END NEW IMPORTS ---
+# --- END IMPORTS ---
 
 
 ROOT_DIR = Path(__file__).parent.parent
 load_dotenv(ROOT_DIR / '.env')
 
-# --- NEW: Auth & Security Configuration ---
+# --- Auth & Security Configuration ---
 SECRET_KEY = os.environ.get('SECRET_KEY', 'your-fallback-secret-key-please-change-me')
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7 # 7 days
 
-GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID')
-GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET')
-GOOGLE_REDIRECT_URI = os.environ.get('GOOGLE_REDIRECT_URI', 'http://localhost:8000/api/auth/google/callback')
+# Removed Google OAuth variables
 FRONTEND_URL = os.environ.get('REACT_APP_URL', 'http://localhost:3000')
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 security = HTTPBearer()
-# --- END NEW AUTH CONFIG ---
+# --- END AUTH CONFIG ---
 
 
 # MongoDB connection
@@ -58,8 +53,6 @@ mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL') 
 db = client[os.environ['DB_NAME']]
-
-# (Firebase init code removed)
 
 # Razorpay client
 razorpay_client = razorpay.Client(auth=(os.environ.get('RAZORPAY_KEY_ID', 'rzp_test_key'), os.environ.get('RAZORPAY_KEY_SECRET', 'rzp_test_secret')))
@@ -76,7 +69,7 @@ app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
 
-# --- NEW: Password & JWT Helper Functions ---
+# --- Password & JWT Helper Functions ---
 
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
@@ -94,10 +87,10 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-# --- END NEW HELPERS ---
+# --- END HELPERS ---
 
 
-# --- REWRITTEN: Auth dependency ---
+# --- Auth dependency ---
 
 class TokenData(BaseModel):
     user_id: Optional[str] = None
@@ -123,7 +116,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         raise credentials_exception
     return user
 
-# --- REWRITTEN: Admin-only dependency ---
+# --- Admin-only dependency ---
 async def verify_admin(current_user: dict = Depends(get_current_user)):
     if not ADMIN_EMAIL:
         raise HTTPException(status_code=500, detail="Admin email not configured")
@@ -133,11 +126,10 @@ async def verify_admin(current_user: dict = Depends(get_current_user)):
     
     return current_user
 
-# --- END REWRITTEN DEPENDENCIES ---
+# --- END DEPENDENCIES ---
 
 
-# --- ALL MODELS (FIX) ---
-# (This is the block that was missing)
+# --- ALL MODELS ---
 
 class ProductImage(BaseModel):
     url: str
@@ -251,10 +243,7 @@ class LandingPageUpdate(BaseModel):
 class UploadSignature(BaseModel):
     timestamp: int
     signature: str
-# --- END OF MISSING MODELS ---
 
-
-# --- UPDATED & NEW: User & Auth Models ---
 class UserBase(BaseModel):
     email: EmailStr
     name: str
@@ -285,10 +274,10 @@ class UserProfileUpdate(BaseModel):
 
 class WishlistUpdate(BaseModel):
     product_id: str
-# --- END UPDATED USER MODELS ---
+# --- END MODELS ---
 
 
-# --- NEW: Auth Routes (Register, Login, Google) ---
+# --- Auth Routes (Register, Login) ---
 
 auth_router = APIRouter(prefix="/api/auth")
 
@@ -325,89 +314,9 @@ async def login_for_access_token(form_data: UserLogin):
     access_token = create_access_token(data={"sub": user["_id"]})
     return {"access_token": access_token, "token_type": "bearer"}
 
-@auth_router.get("/google/login")
-async def google_login(request: Request):
-    if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
-        raise HTTPException(status_code=500, detail="Google Auth not configured")
+# Removed: /google/login and /google/callback endpoints
 
-    flow = GoogleFlow.from_client_config(
-        client_config={
-            "web": {
-                "client_id": GOOGLE_CLIENT_ID,
-                "client_secret": GOOGLE_CLIENT_SECRET,
-                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                "token_uri": "https://oauth2.googleapis.com/token",
-                "redirect_uris": [GOOGLE_REDIRECT_URI],
-            }
-        },
-        scopes=["openid", "https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"],
-        redirect_uri=GOOGLE_REDIRECT_URI
-    )
-    authorization_url, state = flow.authorization_url(
-        access_type='offline',
-        prompt='consent'
-    )
-    request.app.state.google_oauth_state = state
-    return RedirectResponse(authorization_url)
-
-@auth_router.get("/google/callback")
-async def google_auth_callback(request: Request, code: str = Query(...), state: str = Query(...)):
-    if state != request.app.state.google_oauth_state:
-        raise HTTPException(status_code=401, detail="Invalid Google OAuth state")
-
-    flow = GoogleFlow.from_client_config(
-        client_config={
-            "web": {
-                "client_id": GOOGLE_CLIENT_ID,
-                "client_secret": GOOGLE_CLIENT_SECRET,
-                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                "token_uri": "https://oauth2.googleapis.com/token",
-                "redirect_uris": [GOOGLE_REDIRECT_URI],
-            }
-        },
-        scopes=["openid", "https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"],
-        redirect_uri=GOOGLE_REDIRECT_URI
-    )
-    
-    try:
-        flow.fetch_token(code=code)
-        credentials = flow.credentials
-        id_info = id_token.verify_oauth2_token(
-            credentials.id_token, google_requests.Request(), GOOGLE_CLIENT_ID
-        )
-        
-        email = id_info.get('email')
-        name = id_info.get('name', 'Google User')
-        
-        if not email:
-            raise HTTPException(status_code=400, detail="Email not provided by Google")
-
-        user = await db.users.find_one({"email": email})
-        
-        if not user:
-            user_id = str(uuid.uuid4())
-            new_profile = {
-                "_id": user_id,
-                "email": email.lower(),
-                "name": name,
-                "hashed_password": None, 
-                "shipping_address": ShippingAddress().model_dump(),
-                "wishlist": [],
-                "created_at": datetime.now(timezone.utc).isoformat()
-            }
-            await db.users.insert_one(new_profile)
-            user = new_profile
-        
-        access_token = create_access_token(data={"sub": user["_id"]})
-        
-        response = RedirectResponse(url=f"{FRONTEND_URL}/auth/callback?token={access_token}")
-        return response
-
-    except Exception as e:
-        logging.error(f"Google OAuth Error: {e}")
-        raise HTTPException(status_code=400, detail=f"Failed to authenticate with Google: {str(e)}")
-
-# --- END NEW AUTH ROUTES ---
+# --- END AUTH ROUTES ---
 
 
 # --- Product Routes ---
@@ -514,7 +423,8 @@ async def create_razorpay_order(order_data: OrderCreate, user: dict = Depends(ge
         "order_id": order_obj.id,
         "razorpay_order_id": razorpay_order['id'],
         "amount": razorpay_order['amount'],
-        "currency": razorpay_order['currency']
+       # CORRECT
+"currency": razorpay_order['currency'] 
     }
 
 @api_router.post("/orders/verify-payment")
@@ -670,7 +580,7 @@ async def update_user_profile(profile_data: UserProfileUpdate, user: dict = Depe
     )
     updated_profile = await db.users.find_one({"_id": user_id})
     if not updated_profile:
-        raise HTTPException(status_code=4404, detail="User profile not found after update")
+        raise HTTPException(status_code=404, detail="User profile not found after update")
     return updated_profile
 
 # --- Wishlist Endpoints ---
