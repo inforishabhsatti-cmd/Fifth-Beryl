@@ -30,11 +30,10 @@ const HomePage = () => {
   }, []);
 
   useEffect(() => {
-    // Force video play if autoplay blocked
     if (landingSettings?.hero_media_type === "video" && videoRef.current) {
       const playPromise = videoRef.current.play();
       if (playPromise !== undefined) {
-        playPromise.catch(() => console.log("Autoplay prevented, retrying on user interaction"));
+        playPromise.catch(() => {});
       }
     }
   }, [landingSettings]);
@@ -60,26 +59,26 @@ const HomePage = () => {
   };
 
   return (
-    <div className="min-h-screen transition-colors duration-300 bg-white">
+    <div className="min-h-screen bg-white transition-colors duration-300">
       
       {/* HERO SECTION */}
       <section
         ref={heroRef}
-        className="relative h-[85vh] sm:h-[95vh] flex flex-col items-center justify-center overflow-hidden bg-black mt-[-64px]"
+        className="relative h-screen flex items-center justify-center overflow-hidden bg-black mt-[-64px]"
       >
         {landingSettings?.hero_media && (
           <div className="absolute inset-0 z-0">
             {landingSettings.hero_media_type === "video" ? (
               <video
                 ref={videoRef}
+                muted
                 autoPlay
                 loop
-                muted
                 playsInline
-                preload="auto"
+                preload="metadata"
                 disablePictureInPicture
                 controls={false}
-                className="w-full h-full object-cover"
+                className="absolute top-0 left-0 w-full h-full object-cover pointer-events-none"
               >
                 <source src={landingSettings.hero_media} type="video/mp4" />
               </video>
@@ -87,11 +86,10 @@ const HomePage = () => {
               <img
                 src={landingSettings.hero_media}
                 alt="Hero"
-                className="w-full h-full object-cover"
+                className="absolute top-0 left-0 w-full h-full object-cover"
               />
             )}
 
-            {/* Animate ONLY the overlay (fix for iOS autoplay) */}
             <motion.div
               style={{ scale: contentScale, opacity: contentOpacity }}
               className="absolute inset-0 bg-black/30"
@@ -107,9 +105,7 @@ const HomePage = () => {
             <h2 className="text-3xl sm:text-4xl font-bold playfair text-gray-900 mb-2">
               New Arrivals
             </h2>
-            <p className="text-gray-500 text-sm sm:text-base mb-4">
-              Curated just for you.
-            </p>
+            <p className="text-gray-500 text-sm sm:text-base mb-4">Curated just for you.</p>
             <Link
               to="/products"
               className="text-sm font-medium text-black border-b border-black pb-0.5 hover:text-gray-600 hover:border-gray-600 transition-colors"
