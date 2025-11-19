@@ -144,12 +144,15 @@ const HomePage = () => {
           <p className="text-base sm:text-lg text-gray-600 mb-8 font-light">
             Experience the perfect blend of comfort and sophistication with our latest collection.
           </p>
+          {/* FIX: Converted the self-closing tag to a properly closed tag with content */}
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => navigate('/products')}
             className="bg-gray-900 text-white px-10 py-4 rounded-full font-medium hover:bg-gray-800 transition-all shadow-xl"
-          /> {/* FIX 3: Added the closing slash here */}
+          >
+                Explore Now
+          </motion.button>
         </div>
       </section>
 
