@@ -9,11 +9,12 @@ const SplashShutter = ({ onComplete }) => {
   const [isAnimating, setIsAnimating] = useState(false);
   
   const BRAND_NAME = 'FIFTH BERYL';
-  const LOGO_SRC = 'assets/shutter.png'; 
+  // FIX: Changed 'assets/shutter.png' to '/assets/shutter.png' for root-relative loading.
+  const LOGO_SRC = '/assets/shutter.png'; 
   
   // Timing Configuration for the dramatic slide-up effect
   const DELAY_BEFORE_SLIDE_MS = 1200; // Time the logo is displayed statically
-  const SLIDE_DURATION_MS = 2500;      // *** UPDATED to 2500ms (2.5 seconds) ***
+  const SLIDE_DURATION_MS = 2500;       // *** UPDATED to 2500ms (2.5 seconds) ***
   const TOTAL_UNMOUNT_TIME_MS = DELAY_BEFORE_SLIDE_MS + SLIDE_DURATION_MS + 50; 
 
   useEffect(() => {
