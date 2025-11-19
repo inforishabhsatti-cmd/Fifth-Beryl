@@ -65,14 +65,13 @@ const HomePage = () => {
   };
 
   return (
-    {/* FIX 1: The entire page wrapper still has no extra padding */}
     <div className={`min-h-screen transition-colors duration-300 bg-white`}>
       {/* Hero Section */}
       <section 
         ref={heroRef}
-        // FIX 1: Removed pt-20. Instead, we use min-h-[calc(100vh - 80px)] to reserve space 
-        // for a typical navbar height (e.g., 80px) and let the fixed navbar cover the top.
-        className="relative h-[85vh] sm:h-[95vh] flex flex-col items-center justify-center overflow-hidden bg-black"
+        // FIX: Use a negative margin to pull the hero section up underneath the fixed navbar. 
+        // This is the most reliable cross-browser way to ensure zero space.
+        className="relative h-[85vh] sm:h-[95vh] flex flex-col items-center justify-center overflow-hidden bg-black mt-[-64px]"
       >
         {landingSettings?.hero_media ? (
           <motion.div 
