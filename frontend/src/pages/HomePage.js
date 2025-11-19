@@ -54,7 +54,7 @@ const HomePage = () => {
       {/* Hero Section */}
       <section 
         ref={heroRef}
-        // Added pt-20 here to push the hero content down from the fixed navbar
+        {/* Added pt-20 here to push the hero content down from the fixed navbar */}
         className="relative h-[85vh] sm:h-[95vh] flex flex-col items-center justify-center overflow-hidden bg-black pt-20"
       >
         {landingSettings?.hero_media ? (
