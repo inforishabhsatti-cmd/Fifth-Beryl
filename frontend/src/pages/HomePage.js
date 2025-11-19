@@ -14,6 +14,8 @@ const HomePage = () => {
   const [loading, setLoading] = useState(true);
   const [landingSettings, setLandingSettings] = useState(null);
   const heroRef = useRef(null);
+  // Ref to directly control the video element
+  const videoRef = useRef(null); 
   
   const { scrollYProgress } = useScroll({
     target: heroRef,
@@ -27,6 +29,20 @@ const HomePage = () => {
     fetchFeaturedProducts();
     fetchLandingSettings();
   }, []);
+
+  // --- FIX 2: FORCE VIDEO PLAYBACK ON MOUNT ---
+  useEffect(() => {
+    // Only attempt to force play if the settings and the video element exist
+    if (landingSettings?.hero_media_type === 'video' && videoRef.current) {
+        // Use promises to handle play success/failure silently
+        videoRef.current.play().catch(error => {
+            // This error is expected if the browser still refuses autoplay
+            // but the attempt is necessary.
+            console.warn("Autoplay attempt failed (usually due to mobile policy):", error);
+        });
+    }
+  }, [landingSettings]);
+  // ----------------------------------------------
 
   const fetchLandingSettings = async () => {
     try {
@@ -49,14 +65,14 @@ const HomePage = () => {
   };
 
   return (
-    {/* Removed pt-20 from here (main wrapper) */}
-    {/* FIX: Removed invalid template literal from className to fix build error */}
-    <div className="min-h-screen transition-colors duration-300 bg-white">
+    {/* FIX 1: The entire page wrapper still has no extra padding */}
+    <div className={`min-h-screen transition-colors duration-300 bg-white`}>
       {/* Hero Section */}
       <section 
         ref={heroRef}
-        {/* Added pt-20 here to push the hero content down from the fixed navbar (Layout Fix) */}
-        className="relative h-[85vh] sm:h-[95vh] flex flex-col items-center justify-center overflow-hidden bg-black pt-20"
+        // FIX 1: Removed pt-20. Instead, we use min-h-[calc(100vh - 80px)] to reserve space 
+        // for a typical navbar height (e.g., 80px) and let the fixed navbar cover the top.
+        className="relative h-[85vh] sm:h-[95vh] flex flex-col items-center justify-center overflow-hidden bg-black"
       >
         {landingSettings?.hero_media ? (
           <motion.div 
@@ -65,11 +81,11 @@ const HomePage = () => {
           >
             {landingSettings.hero_media_type === 'video' ? (
               <video
+                ref={videoRef} // Attach ref for JS control
                 autoPlay
                 loop
                 muted
                 playsInline
-                webkitPlaysInline // Video Fix: Added for maximum mobile/iOS compatibility
                 preload="auto" 
                 className="w-full h-full object-cover opacity-90"
               >
@@ -146,18 +162,16 @@ const HomePage = () => {
           <p className="text-base sm:text-lg text-gray-600 mb-8 font-light">
             Experience the perfect blend of comfort and sophistication with our latest collection.
           </p>
-          {/* FIX: Converted the self-closing tag to a properly closed tag with content */}
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => navigate('/products')}
             className="bg-gray-900 text-white px-10 py-4 rounded-full font-medium hover:bg-gray-800 transition-all shadow-xl"
           >
-                Explore Now
+            Explore Now
           </motion.button>
         </div>
       </section>
-
     </div>
   );
 };
