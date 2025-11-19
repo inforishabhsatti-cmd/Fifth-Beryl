@@ -49,12 +49,12 @@ const HomePage = () => {
   };
 
   return (
-    {/* FIX 1: Removed pt-20 from the main page wrapper */}
+    {/* Removed pt-20 from here (main wrapper) */}
     <div className={`min-h-screen transition-colors duration-300 bg-white`}>
       {/* Hero Section */}
       <section 
         ref={heroRef}
-        // FIX 1: Added pt-20 here to push the hero content down from the fixed navbar
+        // Added pt-20 here to push the hero content down from the fixed navbar
         className="relative h-[85vh] sm:h-[95vh] flex flex-col items-center justify-center overflow-hidden bg-black pt-20"
       >
         {landingSettings?.hero_media ? (
@@ -68,7 +68,6 @@ const HomePage = () => {
                 loop
                 muted
                 playsInline
-                // FIX 2: Added preload="auto" to increase chance of mobile autoplay
                 preload="auto" 
                 className="w-full h-full object-cover opacity-90"
               >
@@ -150,7 +149,7 @@ const HomePage = () => {
             whileTap={{ scale: 0.95 }}
             onClick={() => navigate('/products')}
             className="bg-gray-900 text-white px-10 py-4 rounded-full font-medium hover:bg-gray-800 transition-all shadow-xl"
-          </motion.button>
+          /> {/* FIX 3: Added the closing slash here */}
         </div>
       </section>
 
