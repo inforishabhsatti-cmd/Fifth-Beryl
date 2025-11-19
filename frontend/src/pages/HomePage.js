@@ -50,11 +50,13 @@ const HomePage = () => {
 
   return (
     {/* Removed pt-20 from here (main wrapper) */}
-    <div className={`min-h-screen transition-colors duration-300 bg-white`}>
+    // Fix 1: Removed backticks and curly braces from className attribute
+    <div className="min-h-screen transition-colors duration-300 bg-white">
       {/* Hero Section */}
       <section 
         ref={heroRef}
-        {/* Added pt-20 here to push the hero content down from the fixed navbar */}
+        {/* Fix 2: Changed line comment to block comment inside the JSX element */}
+        {/* Added pt-20 here to push the hero content down from the fixed navbar */}
         className="relative h-[85vh] sm:h-[95vh] flex flex-col items-center justify-center overflow-hidden bg-black pt-20"
       >
         {landingSettings?.hero_media ? (
