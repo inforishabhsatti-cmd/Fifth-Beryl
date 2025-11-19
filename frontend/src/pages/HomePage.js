@@ -50,13 +50,12 @@ const HomePage = () => {
 
   return (
     {/* Removed pt-20 from here (main wrapper) */}
-    // Fix 1: Removed backticks and curly braces from className attribute
+    {/* FIX: Removed invalid template literal from className to fix build error */}
     <div className="min-h-screen transition-colors duration-300 bg-white">
       {/* Hero Section */}
       <section 
         ref={heroRef}
-        {/* Fix 2: Changed line comment to block comment inside the JSX element */}
-        {/* Added pt-20 here to push the hero content down from the fixed navbar */}
+        {/* Added pt-20 here to push the hero content down from the fixed navbar (Layout Fix) */}
         className="relative h-[85vh] sm:h-[95vh] flex flex-col items-center justify-center overflow-hidden bg-black pt-20"
       >
         {landingSettings?.hero_media ? (
@@ -70,6 +69,7 @@ const HomePage = () => {
                 loop
                 muted
                 playsInline
+                webkitPlaysInline // Video Fix: Added for maximum mobile/iOS compatibility
                 preload="auto" 
                 className="w-full h-full object-cover opacity-90"
               >
