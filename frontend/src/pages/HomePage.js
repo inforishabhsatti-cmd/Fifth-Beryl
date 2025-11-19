@@ -49,11 +49,13 @@ const HomePage = () => {
   };
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 bg-white pt-20`}>
+    {/* FIX 1: Removed pt-20 from the main page wrapper */}
+    <div className={`min-h-screen transition-colors duration-300 bg-white`}>
       {/* Hero Section */}
       <section 
         ref={heroRef}
-        className="relative h-[85vh] sm:h-[95vh] flex items-center justify-center overflow-hidden bg-black"
+        // FIX 1: Added pt-20 here to push the hero content down from the fixed navbar
+        className="relative h-[85vh] sm:h-[95vh] flex flex-col items-center justify-center overflow-hidden bg-black pt-20"
       >
         {landingSettings?.hero_media ? (
           <motion.div 
@@ -66,6 +68,8 @@ const HomePage = () => {
                 loop
                 muted
                 playsInline
+                // FIX 2: Added preload="auto" to increase chance of mobile autoplay
+                preload="auto" 
                 className="w-full h-full object-cover opacity-90"
               >
                 <source src={landingSettings.hero_media} type="video/mp4" />
@@ -146,13 +150,10 @@ const HomePage = () => {
             whileTap={{ scale: 0.95 }}
             onClick={() => navigate('/products')}
             className="bg-gray-900 text-white px-10 py-4 rounded-full font-medium hover:bg-gray-800 transition-all shadow-xl"
-          >
-            Explore Now
           </motion.button>
         </div>
       </section>
 
-      {/* REMOVED: The local <Footer /> component to prevent duplication */}
     </div>
   );
 };
