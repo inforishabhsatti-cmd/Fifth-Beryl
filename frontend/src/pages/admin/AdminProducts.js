@@ -3,12 +3,12 @@ import { motion } from 'framer-motion';
 import { Plus, Edit, Trash2, ArrowLeft, X, LayoutGrid } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
-import Footer from '../../components/Footer';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Textarea } from '../../components/ui/textarea';
 import { Label } from '../../components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select'; // ADDED: Select
 import {
   Dialog,
   DialogContent,
@@ -19,7 +19,8 @@ import {
 import { toast } from 'sonner';
 import FileUpload from '../../components/FileUpload';
 
-// Helper component for Variants
+// NOTE: This component MUST be defined in or imported into this file for the modal to work.
+// If you defined it elsewhere, ensure it is available here.
 const VariantEditor = ({ variants, setVariants }) => {
   const addVariant = () => {
     setVariants([...variants, { color: '', color_code: '#000000', sizes: { "S": 0, "M": 0, "L": 0, "XL": 0 } }]);
@@ -41,7 +42,6 @@ const VariantEditor = ({ variants, setVariants }) => {
     setVariants(variants.filter((_, i) => i !== index));
   };
   
-  // Hardcoded sizes for simplicity
   const defaultSizes = ["S", "M", "L", "XL"]; 
 
   return (
@@ -134,11 +134,13 @@ const AdminProducts = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   
+  // MODIFIED: Added mrp and fit to formData state
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     mrp: '',
     price: '', // price is Sale Price
+    fit: 'Regular Fit', // ADDED: Default fit
     category: 'shirts',
     featured: false,
     images: [],
@@ -173,12 +175,11 @@ const AdminProducts = () => {
 
   const handleSaveProduct = async () => {
     try {
-      if (!formData.name || !formData.price) {
-        toast.error('Name and Sale Price are required');
+      if (!formData.name || !formData.price || !formData.fit || !formData.description) {
+        toast.error('Name, Description, Price, and Fit are required');
         return;
       }
       
-      // Ensure variants are properly set, at least one standard if none provided
       const finalVariants = formData.variants.length > 0 ? formData.variants : [
            { color: "Standard", color_code: "#000000", sizes: { "S": 10, "M": 10, "L": 10, "XL": 10 } }
       ];
@@ -187,7 +188,7 @@ const AdminProducts = () => {
       const productData = {
         ...formData,
         price: parseFloat(formData.price),
-        mrp: formData.mrp ? parseFloat(formData.mrp) : undefined,
+        mrp: formData.mrp ? parseFloat(formData.mrp) : undefined, // Send as undefined if empty
         variants: finalVariants
       };
 
@@ -204,8 +205,8 @@ const AdminProducts = () => {
       resetForm();
       fetchProducts();
     } catch (error) {
-      console.error('Error saving product:', error);
-      toast.error('Failed to save product');
+      console.error('Error saving product:', error.response?.data || error);
+      toast.error('Failed to save product. Check required fields.');
     }
   };
 
@@ -227,6 +228,7 @@ const AdminProducts = () => {
       description: product.description || '',
       mrp: product.mrp ? product.mrp.toString() : '',
       price: product.price ? product.price.toString() : '',
+      fit: product.fit || 'Regular Fit', // ADDED: Read fit
       category: product.category || 'shirts',
       featured: product.featured || false,
       images: product.images || [],
@@ -241,6 +243,7 @@ const AdminProducts = () => {
       description: '',
       mrp: '',
       price: '',
+      fit: 'Regular Fit', // ADDED: Reset fit
       category: 'shirts',
       featured: false,
       images: [],
@@ -281,7 +284,7 @@ const AdminProducts = () => {
               <div className="space-y-8 py-4">
                 
                 {/* 1. General Info Section */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
                     <Label htmlFor="name">Product Name *</Label>
                     <Input 
@@ -293,9 +296,25 @@ const AdminProducts = () => {
                       required
                     />
                   </div>
+                  
+                  {/* ADDED: Fit Select Input */}
+                  <div>
+                    <Label htmlFor="fit">Shirt Fit *</Label>
+                    <Select value={formData.fit} onValueChange={(value) => setFormData({...formData, fit: value})}>
+                        <SelectTrigger id="fit" className="rounded-none border-gray-300 focus:border-black">
+                            <SelectValue placeholder="Select Fit Type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="Regular Fit">Regular Fit</SelectItem>
+                            <SelectItem value="Slim Fit">Slim Fit</SelectItem>
+                            <SelectItem value="Relaxed Fit">Relaxed Fit</SelectItem>
+                            <SelectItem value="Tailored Fit">Tailored Fit</SelectItem>
+                        </SelectContent>
+                    </Select>
+                  </div>
+                  
                   <div>
                     <Label htmlFor="category">Category</Label>
-                    {/* Using a simple input for category, could be a select in a full application */}
                     <Input 
                       id="category" 
                       value={formData.category} 
@@ -306,7 +325,20 @@ const AdminProducts = () => {
                   </div>
                 </div>
 
-                {/* 2. Pricing Section */}
+                {/* 2. Description */}
+                <div>
+                  <Label htmlFor="description">Description *</Label>
+                  <Textarea 
+                    id="description" 
+                    rows={4}
+                    value={formData.description} 
+                    onChange={(e) => setFormData({...formData, description: e.target.value})}
+                    className="rounded-none border-gray-300 focus:border-black"
+                    required
+                  />
+                </div>
+
+                {/* 3. Pricing Section */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 border-t border-b border-gray-100 py-6">
                   <div>
                     <Label htmlFor="price">Sale Price (₹) *</Label>
@@ -342,18 +374,6 @@ const AdminProducts = () => {
                     <Label htmlFor="featured" className="ml-2">Mark as Featured</Label>
                   </div>
                 </div>
-
-                {/* 3. Description */}
-                <div>
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea 
-                    id="description" 
-                    rows={4}
-                    value={formData.description} 
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
-                    className="rounded-none border-gray-300 focus:border-black"
-                  />
-                </div>
                 
                 {/* 4. Variants Section */}
                 <VariantEditor variants={formData.variants} setVariants={(v) => setFormData({...formData, variants: v})} />
@@ -366,7 +386,10 @@ const AdminProducts = () => {
                       <div key={i} className="relative group aspect-square">
                         <img src={img.url} alt="" className="w-full h-full object-cover border border-gray-200" />
                         <button 
-                          onClick={() => setFormData(prev => ({...prev, images: prev.images.filter((_, idx) => idx !== i)}))}
+                          onClick={(e) => {
+                            e.stopPropagation(); // Stop propagation for nested buttons
+                            setFormData(prev => ({...prev, images: prev.images.filter((_, idx) => idx !== i)}))
+                          }}
                           className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                         >
                           <X size={12} />
@@ -377,7 +400,7 @@ const AdminProducts = () => {
                   <FileUpload 
                     onUpload={handleImageUpload} 
                     multiple={true} 
-                    label={`Add Image(s) (${formData.images.length} uploaded)`}
+                    label={`Add Images (${formData.images.length} uploaded)`}
                   />
                 </div>
 

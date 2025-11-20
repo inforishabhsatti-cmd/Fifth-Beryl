@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Package, Truck, CheckCircle, XCircle } from 'lucide-react';
+import { Package, Truck, CheckCircle, XCircle, Link as LinkIcon, IndianRupee } from 'lucide-react'; // ADDED: LinkIcon, IndianRupee
 import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
+// Footer import is kept, but component usage removed below
+import Footer from '../components/Footer'; 
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom'; // ADDED: Link from router-dom
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
+
 
 const OrdersPage = () => {
   const { currentUser: user, api, loading: authLoading } = useAuth();
@@ -13,6 +16,20 @@ const OrdersPage = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Define tracking URL bases for easy link creation
+  const trackingUrlBase = {
+      'FedEx': 'https://www.fedex.com/apps/fedextrack/?tracknumbers=',
+      'Delhivery': 'https://www.delhivery.com/track/package/',
+      // Add more courier base URLs here if needed
+  };
+
+  const getTrackingLink = (courier, number) => {
+      if (courier && number && trackingUrlBase[courier]) {
+          return trackingUrlBase[courier] + number;
+      }
+      return null;
+  }
+  
   useEffect(() => {
     if (authLoading) return;
 
@@ -66,8 +83,8 @@ const OrdersPage = () => {
   if (authLoading) {
     return (
       <div className="min-h-screen bg-white">
-         <Navbar />
-         <div className="flex justify-center py-40"><div className="spinner" /></div>
+        <Navbar />
+        <div className="flex justify-center py-40"><div className="spinner" /></div>
       </div>
     );
   }
@@ -83,13 +100,12 @@ const OrdersPage = () => {
             Sign In
           </Button>
         </div>
-        <Footer />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white pt-24"> {/* Added pt-24 */}
+    <div className="min-h-screen bg-white pt-24">
       <Navbar />
       
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -126,7 +142,7 @@ const OrdersPage = () => {
                 className="bg-white border border-gray-100 p-6 hover:shadow-md transition-shadow duration-300"
                 data-testid={`order-${index}`}
               >
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 border-b border-gray-50 pb-6">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 border-b border-gray-200 pb-6">
                   <div className="flex items-center gap-4 mb-4 md:mb-0">
                     {getStatusIcon(order.status)}
                     <div>
@@ -140,13 +156,52 @@ const OrdersPage = () => {
                     </span>
                     <div className="text-right">
                       <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Total</p>
-                      <p className="text-xl font-bold text-black">₹{order.total_amount}</p>
+                      {/* FIX: Using final_amount (after discount) for display */}
+                      <p className="text-xl font-bold text-black">₹{order.final_amount ? order.final_amount.toFixed(2) : order.total_amount.toFixed(2)}</p> 
                     </div>
                   </div>
                 </div>
+                
+                {/* Tracking Information (NEW) */}
+                {(order.tracking_number && order.courier && order.status !== 'delivered' && order.status !== 'cancelled') && (
+                    <div className="p-3 bg-gray-50 border border-gray-200 mt-4 mb-4 flex justify-between items-center rounded-none">
+                        <div className="flex items-center">
+                            <Truck size={20} className="text-black mr-3"/>
+                            <div>
+                                <p className="text-xs text-gray-600 uppercase tracking-wider">Tracking ({order.courier})</p>
+                                <a 
+                                    href={getTrackingLink(order.courier, order.tracking_number)} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer" 
+                                    className="font-semibold text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-1 text-sm"
+                                >
+                                    {order.tracking_number}
+                                    <LinkIcon size={14} />
+                                </a>
+                            </div>
+                        </div>
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="bg-white text-black border-black rounded-none"
+                            asChild
+                        >
+                            <a href={getTrackingLink(order.courier, order.tracking_number)} target="_blank" rel="noopener noreferrer">Track Order</a>
+                        </Button>
+                    </div>
+                )}
+                {/* Discount Info */}
+                {order.discount_amount > 0 && (
+                    <div className="flex justify-between items-center pt-2 pb-2 text-sm text-green-600">
+                        <span className="font-medium flex items-center gap-1">
+                            <IndianRupee size={14} /> Coupon Discount ({order.coupon_code})
+                        </span>
+                        <span>- ₹{order.discount_amount.toFixed(2)}</span>
+                    </div>
+                )}
 
                 <div className="pt-2">
-                  <h3 className="font-bold text-sm uppercase tracking-wider mb-4 text-black">Items</h3>
+                  <h3 className="font-bold text-sm uppercase tracking-wider mb-4 text-black border-t border-gray-100 pt-4">Items</h3>
                   <div className="space-y-4">
                     {order.items.map((item, itemIndex) => (
                       <div key={itemIndex} className="flex justify-between items-center">
@@ -156,7 +211,7 @@ const OrdersPage = () => {
                             {item.color} | Size: {item.size} | Qty: {item.quantity}
                           </p>
                         </div>
-                        <p className="font-semibold text-black">₹{item.price * item.quantity}</p>
+                        <p className="font-semibold text-black">₹{(item.price * item.quantity).toFixed(2)}</p>
                       </div>
                     ))}
                   </div>
@@ -175,10 +230,10 @@ const OrdersPage = () => {
                     </p>
                   </div>
                   <div className="flex items-end justify-start md:justify-end">
-                     <p className="text-sm text-gray-400">Ordered on {new Date(order.created_at).toLocaleDateString('en-IN', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
+                      <p className="text-sm text-gray-400">Ordered on {new Date(order.created_at).toLocaleDateString('en-IN', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
                       })}</p>
                   </div>
                 </div>
@@ -187,7 +242,6 @@ const OrdersPage = () => {
           </div>
         )}
       </div>
-     
     </div>
   );
 };

@@ -1,6 +1,6 @@
 // frontend/src/components/FileUpload.js
 import { useState, useRef } from 'react';
-import { Upload, X, Video } from 'lucide-react';
+import { Upload, X, Video, FileText } from 'lucide-react';
 import { Button } from './ui/button';
 import { validateImageFile, validateVideoFile, validateFileSize } from '../utils/fileUpload';
 import { toast } from 'sonner';
@@ -14,13 +14,13 @@ const API_KEY = process.env.REACT_APP_CLOUDINARY_API_KEY;
 const FileUpload = ({ onUpload, accept = 'image/*', maxSize = 5, multiple = false, label = 'Upload Image' }) => {
   const [previews, setPreviews] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false); // ADDED: State to track drag over
   const fileInputRef = useRef(null);
   
   // Use the 'api' instance from AuthContext which handles auth headers automatically
   const { api } = useAuth(); 
 
-  const handleFileSelect = async (e) => {
-    const files = Array.from(e.target.files);
+  const uploadFiles = async (files) => {
     if (!files.length) return;
 
     setUploading(true);
@@ -34,7 +34,7 @@ const FileUpload = ({ onUpload, accept = 'image/*', maxSize = 5, multiple = fals
         const imageAllowed = accept.includes('image');
         const videoAllowed = accept.includes('video');
 
-        if ((isImageFile && !imageAllowed) || (isVideoFile && !videoAllowed) || (!isImageFile && !isVideoFile)) {
+        if ((isImageFile && !imageAllowed) || (isVideoFile && !videoAllowed) || (!isImageFile && !isVideoFile && file.size > 0)) {
           toast.error(`${file.name} is not a valid file format.`);
           continue;
         }
@@ -94,11 +94,64 @@ const FileUpload = ({ onUpload, accept = 'image/*', maxSize = 5, multiple = fals
       }
     }
   };
+  
+  // Handlers for HTML input change event
+  const handleFileSelect = (e) => {
+    const files = Array.from(e.target.files);
+    uploadFiles(files);
+  };
+  
+  // Handlers for Drag and Drop functionality
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+    e.dataTransfer.dropEffect = 'copy';
+  };
+  
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+  
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    // Process files from the drop event
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    if (droppedFiles.length) {
+        uploadFiles(droppedFiles);
+    }
+  };
 
   const removeFile = (index) => {
     const newPreviews = previews.filter((_, i) => i !== index);
     setPreviews(newPreviews);
     onUpload(multiple ? newPreviews : null);
+  };
+
+  const renderFilePreview = (file) => {
+    if (file.type.startsWith('image')) {
+        return (
+            <img
+              src={file.preview}
+              alt={file.name}
+              className="w-full h-32 object-cover border border-gray-200"
+            />
+        );
+    }
+    if (file.type.startsWith('video')) {
+        return (
+            <div className="w-full h-32 bg-gray-100 border border-gray-200 flex items-center justify-center">
+                <Video size={40} className="text-gray-400" />
+            </div>
+        );
+    }
+    return (
+        <div className="w-full h-32 bg-gray-100 border border-gray-200 flex items-center justify-center">
+            <FileText size={40} className="text-gray-400" />
+        </div>
+    );
   };
 
   return (
@@ -112,36 +165,42 @@ const FileUpload = ({ onUpload, accept = 'image/*', maxSize = 5, multiple = fals
         className="hidden"
       />
       
-      <Button
-        type="button"
-        variant="outline"
+      {/* MODIFIED: Combined Button and drop zone into a single div */}
+      <div
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
         onClick={() => fileInputRef.current?.click()}
         disabled={uploading}
-        className="w-full bg-white text-black border-black hover:bg-gray-100 rounded-none"
+        className={`w-full p-6 border-2 border-dashed transition-colors cursor-pointer rounded-none flex items-center justify-center flex-col text-center
+            ${uploading ? 'bg-gray-100 text-gray-500 border-gray-300' : 
+              isDragging ? 'bg-black text-white border-black' : 
+              'bg-white text-black border-gray-400 hover:border-black hover:bg-gray-50'
+            }
+        `}
       >
-        <Upload className="mr-2" size={20} />
-        {uploading ? 'Uploading...' : label}
-      </Button>
+        <Upload className="mb-2" size={24} />
+        <p className="text-sm font-medium">
+            {uploading ? 'Uploading...' : isDragging ? 'Drop your file(s) here' : label}
+        </p>
+        <p className={`text-xs mt-1 ${isDragging ? 'text-gray-300' : 'text-gray-500'}`}>
+            or click to select file(s)
+        </p>
+      </div>
 
       {previews.length > 0 && (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
           {previews.map((file, index) => (
-            <div key={index} className="relative group">
-              {file.type.startsWith('image') ? (
-                <img
-                  src={file.preview}
-                  alt={file.name}
-                  className="w-full h-32 object-cover border border-gray-200"
-                />
-              ) : (
-                <div className="w-full h-32 bg-gray-100 border border-gray-200 flex items-center justify-center">
-                  <Video size={40} className="text-gray-400" />
-                </div>
-              )}
+            <div key={index} className="relative group aspect-square">
+              {renderFilePreview(file)}
               <button
                 type="button"
-                onClick={() => removeFile(index)}
-                className="absolute top-2 right-2 bg-black text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-800"
+                onClick={(e) => {
+                    // Prevent propagation to the parent div's click handler
+                    e.stopPropagation(); 
+                    removeFile(index);
+                }}
+                className="absolute top-2 right-2 bg-black text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-800 z-10"
               >
                 <X size={14} />
               </button>

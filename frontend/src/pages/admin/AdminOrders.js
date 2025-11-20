@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Package, Truck, CheckCircle, XCircle, DollarSign } from 'lucide-react';
+import { ArrowLeft, Package, Truck, CheckCircle, XCircle, ChevronDown, Save, Link as LinkIcon, Edit3 } from 'lucide-react'; // Added icons
 import { Link } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
-import Footer from '../../components/Footer';
+// Footer removed
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input'; // ADDED: Input
+import { Label } from '../../components/ui/label'; // ADDED: Label
 import {
   Select,
   SelectContent,
@@ -13,12 +15,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../../components/ui/select';
+import { 
+    Dialog, 
+    DialogContent, 
+    DialogHeader, 
+    DialogTitle, 
+    DialogTrigger 
+} from '../../components/ui/dialog'; // ADDED: Dialog imports
 import { toast } from 'sonner';
 
 const AdminOrders = () => {
   const { api } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false); // State for the tracking modal
+  const [currentOrder, setCurrentOrder] = useState(null);
+  const [trackingData, setTrackingData] = useState({
+      status: '',
+      tracking_number: '',
+      courier: ''
+  });
 
   useEffect(() => {
     fetchOrders();
@@ -36,16 +52,39 @@ const AdminOrders = () => {
     }
   };
 
-  const updateStatus = async (orderId, newStatus) => {
+  const handleOpenUpdateModal = (order) => {
+    setCurrentOrder(order);
+    setTrackingData({
+        status: order.status,
+        tracking_number: order.tracking_number || '',
+        courier: order.courier || ''
+    });
+    setDialogOpen(true);
+  };
+  
+  const handleSaveUpdate = async () => {
+    if (!currentOrder || !trackingData.status) return;
+
+    if (trackingData.status === 'shipped' && (!trackingData.tracking_number || !trackingData.courier)) {
+        toast.error('Tracking number and courier are required when setting status to "Shipped".');
+        return;
+    }
+    
     try {
-      await api.put(`/orders/${orderId}/status?status=${newStatus}`);
-      toast.success('Order status updated');
-      fetchOrders(); // Refresh
+        await api.put(`/orders/${currentOrder.id}/status`, {
+            status: trackingData.status,
+            tracking_number: trackingData.tracking_number || null,
+            courier: trackingData.courier || null
+        });
+        toast.success('Order status and tracking updated');
+        setDialogOpen(false);
+        fetchOrders();
     } catch (error) {
-      console.error('Error updating status:', error);
-      toast.error('Failed to update status');
+        console.error('Error updating status:', error);
+        toast.error('Failed to update status');
     }
   };
+
 
   const getStatusIcon = (status) => {
     switch (status) {
@@ -65,6 +104,18 @@ const AdminOrders = () => {
       ].filter(p => p && p.trim() && p.trim() !== ','); // Filter out empty strings/optional lines
       return parts.join(', ');
   }
+  
+  const trackingUrlBase = {
+      'FedEx': 'https://www.fedex.com/apps/fedextrack/?tracknumbers=',
+      'Delhivery': 'https://www.delhivery.com/track/package/',
+      // Add more courier base URLs here
+  };
+  const getTrackingLink = (courier, number) => {
+      if (courier && number && trackingUrlBase[courier]) {
+          return trackingUrlBase[courier] + number;
+      }
+      return null;
+  }
 
   return (
     <div className="min-h-screen bg-white pt-24">
@@ -79,6 +130,70 @@ const AdminOrders = () => {
           </Link>
           <h1 className="text-4xl font-bold playfair text-black">Manage Orders</h1>
         </div>
+        
+        {/* Tracking Update Modal */}
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogContent className="max-w-md bg-white rounded-none border-black">
+                <DialogHeader>
+                    <DialogTitle className="playfair text-2xl">Update Order #{currentOrder?.id.substring(0, 8)}</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-6 py-4">
+                    
+                    {/* Status Selection */}
+                    <div>
+                        <Label htmlFor="status">Order Status</Label>
+                        <Select 
+                            value={trackingData.status} 
+                            onValueChange={(val) => setTrackingData({...trackingData, status: val})}
+                        >
+                            <SelectTrigger id="status" className="w-full rounded-none border-gray-300 focus:border-black">
+                                <SelectValue placeholder="Select Status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="pending">Pending</SelectItem>
+                                <SelectItem value="processing">Processing</SelectItem>
+                                <SelectItem value="shipped">Shipped</SelectItem>
+                                <SelectItem value="delivered">Delivered</SelectItem>
+                                <SelectItem value="cancelled">Cancelled</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* Tracking Number */}
+                    {trackingData.status === 'shipped' && (
+                        <>
+                            <div>
+                                <Label htmlFor="tracking_number">Tracking Number</Label>
+                                <Input 
+                                    id="tracking_number"
+                                    value={trackingData.tracking_number}
+                                    onChange={(e) => setTrackingData({...trackingData, tracking_number: e.target.value})}
+                                    className="rounded-none border-gray-300 focus:border-black"
+                                    placeholder="Enter tracking number"
+                                />
+                            </div>
+                            
+                            {/* Courier Selection */}
+                            <div>
+                                <Label htmlFor="courier">Courier Service</Label>
+                                <Input 
+                                    id="courier"
+                                    value={trackingData.courier}
+                                    onChange={(e) => setTrackingData({...trackingData, courier: e.target.value})}
+                                    className="rounded-none border-gray-300 focus:border-black"
+                                    placeholder="e.g., FedEx, Delhivery"
+                                />
+                            </div>
+                        </>
+                    )}
+
+                    <Button onClick={handleSaveUpdate} className="w-full bg-black text-white hover:bg-gray-800 rounded-none py-3">
+                        <Save size={18} className="mr-2" /> Save Update
+                    </Button>
+                </div>
+            </DialogContent>
+        </Dialog>
+
 
         {loading ? (
           <div className="flex justify-center py-20">
@@ -95,6 +210,7 @@ const AdminOrders = () => {
                     <th className="text-left py-4 px-6 font-semibold text-gray-900 uppercase tracking-wider text-sm">Address & Phone</th>
                     <th className="text-left py-4 px-6 font-semibold text-gray-900 uppercase tracking-wider text-sm">Total Paid</th>
                     <th className="text-left py-4 px-6 font-semibold text-gray-900 uppercase tracking-wider text-sm">Status</th>
+                    <th className="text-left py-4 px-6 font-semibold text-gray-900 uppercase tracking-wider text-sm">Tracking</th>
                     <th className="text-left py-4 px-6 font-semibold text-gray-900 uppercase tracking-wider text-sm">Date</th>
                   </tr>
                 </thead>
@@ -117,14 +233,12 @@ const AdminOrders = () => {
                             </div>
                         )}
                       </td>
-                      {/* ADDED: Full Address Display */}
                       <td className="py-4 px-6 text-gray-600 text-sm max-w-xs">
                           <div className="text-black font-medium">{order.shipping_address.phone}</div>
                           <div className="text-xs">{formatAddress(order.shipping_address)}</div>
                       </td>
                       <td className="py-4 px-6">
                         <div className="font-bold text-black">
-                            {/* Display final_amount (amount paid after discount) */}
                             ₹{order.final_amount ? order.final_amount.toFixed(2) : order.total_amount.toFixed(2)}
                         </div>
                         {order.discount_amount > 0 && (
@@ -134,25 +248,33 @@ const AdminOrders = () => {
                         )}
                       </td>
                       <td className="py-4 px-6">
-                        <div className="flex items-center gap-2">
-                          {getStatusIcon(order.status)}
-                          <Select 
-                            defaultValue={order.status} 
-                            onValueChange={(val) => updateStatus(order.id, val)}
+                          <Button 
+                              onClick={() => handleOpenUpdateModal(order)}
+                              variant="ghost" 
+                              className="px-3 py-1 h-auto text-xs font-bold uppercase tracking-wide border border-gray-300 text-black hover:bg-gray-100 rounded-none"
                           >
-                            <SelectTrigger className="w-[130px] h-8 text-xs border-gray-300 rounded-none focus:ring-black">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="pending">Pending</SelectItem>
-                              <SelectItem value="processing">Processing</SelectItem>
-                              <SelectItem value="shipped">Shipped</SelectItem>
-                              <SelectItem value="delivered">Delivered</SelectItem>
-                              <SelectItem value="cancelled">Cancelled</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
+                             <Edit3 size={14} className="mr-1" /> {order.status}
+                          </Button>
                       </td>
+                      
+                      {/* ADDED: Tracking Display */}
+                      <td className="py-4 px-6 text-sm">
+                          {order.tracking_number ? (
+                              <a 
+                                  href={getTrackingLink(order.courier, order.tracking_number)} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer" 
+                                  className="text-blue-600 hover:underline flex items-center gap-1"
+                              >
+                                  {order.tracking_number}
+                                  <LinkIcon size={14} />
+                              </a>
+                          ) : (
+                              <span className="text-gray-500">-</span>
+                          )}
+                          {order.courier && <div className="text-xs text-gray-500">{order.courier}</div>}
+                      </td>
+                      
                       <td className="py-4 px-6 text-gray-500 text-sm">{new Date(order.created_at).toLocaleDateString()}</td>
                     </motion.tr>
                   ))}

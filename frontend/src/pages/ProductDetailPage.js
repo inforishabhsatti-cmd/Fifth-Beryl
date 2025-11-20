@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Star, ShoppingCart, Ruler } from 'lucide-react'; 
+import { Star, ShoppingCart, Ruler, Shirt } from 'lucide-react'; // ADDED: Shirt icon
+import { Helmet } from 'react-helmet-async'; 
 import Navbar from '../components/Navbar';
+import ProductCard from '../components/ProductCard'; 
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -23,7 +25,6 @@ const sizeChartData = {
     ]
 };
 
-// NEW COMPONENT: Size Chart Dialog
 const SizeChartDialog = () => (
     <Dialog>
         <DialogTrigger asChild>
@@ -62,7 +63,7 @@ const SizeChartDialog = () => (
 
 
 const ProductDetailPage = () => {
-  const { id } = useParams(); // id now receives the slug
+  const { id } = useParams();
   const navigate = useNavigate();
   const { addToCart } = useCart();
   
@@ -75,15 +76,22 @@ const ProductDetailPage = () => {
   const [selectedImage, setSelectedImage] = useState(0);
   const [reviews, setReviews] = useState([]);
   const [newReview, setNewReview] = useState({ rating: 5, comment: '' });
+  const [recommendations, setRecommendations] = useState([]);
 
   useEffect(() => {
     fetchProduct();
-    fetchReviews();
-  }, [id]);
+  }, [id]); 
+
+  useEffect(() => {
+    if (product?.id) {
+        fetchReviews();
+        fetchRecommendations(product.id); 
+    }
+  }, [product?.id]); 
+
 
   const fetchProduct = async () => {
     try {
-      // API call uses the slug/id directly, which the backend handles
       const response = await api.get(`/products/${id}`);
       setProduct(response.data);
       if (response.data.variants?.length > 0) {
@@ -99,14 +107,22 @@ const ProductDetailPage = () => {
 
   const fetchReviews = async () => {
     try {
-      // When fetching reviews, we must still use the product's actual ID
-      const productId = product?.id;
+      const productId = product?.id || id;
       if (!productId) return; 
 
       const response = await api.get(`/reviews/${productId}`);
       setReviews(response.data);
     } catch (error) {
       console.error('Error fetching reviews:', error);
+    }
+  };
+  
+  const fetchRecommendations = async (productId) => {
+    try {
+      const response = await api.get(`/products/recommendations/${productId}`);
+      setRecommendations(response.data);
+    } catch (error) {
+      console.error('Error fetching recommendations:', error);
     }
   };
 
@@ -129,7 +145,7 @@ const ProductDetailPage = () => {
     }
     try {
       await api.post('/reviews', { 
-        product_id: product.id, // Use product.id here
+        product_id: product.id, 
         ...newReview 
       });
       
@@ -173,8 +189,24 @@ const ProductDetailPage = () => {
     ? Math.round(((product.mrp - product.price) / product.mrp) * 100) 
     : 0;
 
+  const selectedMedia = product.images[selectedImage];
+  const isVideo = selectedMedia?.url.includes('/video/') || selectedMedia?.url.endsWith('.mp4') || selectedMedia?.url.endsWith('.webm');
+  
+  const mainMediaUrl = selectedMedia?.url.replace('/upload/', '/upload/w_1200,q_auto,f_auto/') || '/placeholder.jpg';
+  const thumbnailMediaUrl = selectedMedia?.url.replace('/upload/', '/upload/w_100,q_auto,f_auto/') || '/placeholder.jpg';
+
   return (
-    <div className="min-h-screen bg-black text-white pt-24">
+    <div className="min-h-screen bg-black text-white pt-32">
+      
+      <Helmet>
+        <title>{product.name} | Fifth Beryl</title>
+        <meta name="description" content={product.description.substring(0, 160) + '... Buy now!'} />
+        <meta property="og:title" content={product.name} />
+        <meta property="og:description" content={product.description.substring(0, 160) + '...'} />
+        <meta property="og:image" content={product.images[0]?.url} />
+        <meta name="twitter:card" content="summary_large_image" />
+      </Helmet>
+      
       <Navbar />
       
       <div className="bg-black pb-20"> 
@@ -182,20 +214,46 @@ const ProductDetailPage = () => {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
               
-              {/* Images */}
+              {/* Images / Media Gallery */}
               <div>
                 <motion.div
                   initial={{ opacity: 0, x: -30 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className="bg-white text-black border border-gray-100 overflow-hidden mb-4 aspect-[4/5] p-4 shadow-xl"
+                  className="bg-white text-black border border-gray-100 overflow-hidden mb-4 aspect-[4/5] p-4 shadow-xl group relative"
                 >
-                  <img
-                    src={product.images[selectedImage]?.url.replace('/upload/', '/upload/w_800,q_auto,f_auto/') || '/placeholder.jpg'}
-                    alt={product.name}
-                    className="w-full h-full object-contain mix-blend-multiply"
-                    data-testid="main-product-image"
-                  />
+                  
+                  {/* Media Display: Video or Image */}
+                  {isVideo ? (
+                    <video 
+                      src={mainMediaUrl} 
+                      className="w-full h-full object-contain mix-blend-multiply" 
+                      controls 
+                      autoPlay 
+                      loop
+                      muted
+                    />
+                  ) : (
+                    // Image with Simple Hover Zoom
+                    <motion.img
+                      src={mainMediaUrl}
+                      alt={product.name}
+                      className="w-full h-full object-contain mix-blend-multiply transition-transform duration-500 ease-out cursor-zoom-in"
+                      data-testid="main-product-image"
+                      // Simple Zoom Effect on hover (only on large screens)
+                      whileHover={{ scale: 1.5, originX: '50%', originY: '50%' }}
+                      transition={{ duration: 0.7 }}
+                    />
+                  )}
+                  
+                  {/* Zoom instruction overlay for desktop */}
+                  {!isVideo && (
+                    <div className="absolute bottom-4 right-4 bg-black/70 text-white text-xs px-2 py-1 hidden lg:block pointer-events-none">
+                        Hover to Zoom
+                    </div>
+                  )}
                 </motion.div>
+                
+                {/* Thumbnails */}
                 <div className="grid grid-cols-4 gap-4 px-4">
                   {product.images.map((image, index) => (
                     <button
@@ -224,23 +282,33 @@ const ProductDetailPage = () => {
               >
                 <h1 className="text-4xl font-bold mb-4 playfair text-white" data-testid="product-name">{product.name}</h1>
                 
-                <div className="flex items-center gap-2 mb-6">
-                  <div className="flex">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <Star
-                        key={star}
-                        size={18}
-                        className={star <= Math.round(avgRating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-600'}
-                      />
-                    ))}
-                  </div>
-                  <span className="text-sm text-gray-400 border-b border-gray-700 pb-0.5">
-                    {reviews.length} reviews
-                  </span>
+                {/* Fit and Rating Row */}
+                <div className="flex items-center justify-between gap-4 mb-4">
+                    {/* ADDED: Fit Visualization */}
+                    <div className="flex items-center gap-2 text-gray-400">
+                        <Shirt size={18} className="text-white" />
+                        <span className="text-sm font-semibold uppercase tracking-wider text-white">{product.fit}</span>
+                    </div>
+
+                    {/* Ratings */}
+                    <div className="flex items-center gap-2">
+                        <div className="flex">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                                <Star
+                                    key={star}
+                                    size={18}
+                                    className={star <= Math.round(avgRating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-600'}
+                                />
+                            ))}
+                        </div>
+                        <span className="text-sm text-gray-400 border-b border-gray-700 pb-0.5">
+                            {reviews.length} reviews
+                        </span>
+                    </div>
                 </div>
 
                 {/* Price display */}
-                <div className="flex items-baseline gap-4 mb-6">
+                <div className="flex items-baseline gap-4 mb-6 border-b border-gray-800 pb-4">
                     <p className="text-3xl font-medium text-white" data-testid="product-price">
                         ₹{product.price.toFixed(2)}
                     </p>
@@ -383,6 +451,18 @@ const ProductDetailPage = () => {
                 )}
               </div>
             </div>
+            
+            {/* NEW SECTION: Product Recommendations */}
+            {recommendations.length > 0 && (
+                <div className="mt-24 border-t border-gray-800 pt-16">
+                    <h2 className="text-3xl font-bold mb-10 playfair text-center text-white">Customers Also Bought</h2>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                        {recommendations.map((recProduct, index) => (
+                            <ProductCard key={recProduct.id} product={recProduct} index={index} />
+                        ))}
+                    </div>
+                </div>
+            )}
           </div>
       </div>
     </div>

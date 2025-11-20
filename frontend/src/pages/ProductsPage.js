@@ -2,25 +2,20 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
+import { Helmet } from 'react-helmet-async'; // ADDED: Helmet for SEO
 import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
-import axios from 'axios';
-import { Input } from '../components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-  PaginationEllipsis,
-} from "@/components/ui/pagination";
+import ProductCard from '../components/ProductCard'; 
+import { useAuth } from '../context/AuthContext'; 
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+import { Input } from '../components/ui/input';
+import { Button } from '../components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Label } from '../components/ui/label'; // FIX: ADDED Label import
 
 const ProductsPage = () => {
   const navigate = useNavigate();
+  const { api } = useAuth(); 
+  
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -30,6 +25,7 @@ const ProductsPage = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalProducts, setTotalProducts] = useState(0);
 
+  // Debounce effect
   useEffect(() => {
     const timerId = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm);
@@ -38,6 +34,7 @@ const ProductsPage = () => {
     return () => clearTimeout(timerId);
   }, [searchTerm]);
 
+  // Fetch products effect
   useEffect(() => {
     fetchProducts();
   }, [debouncedSearchTerm, sortBy, currentPage]); 
@@ -53,7 +50,8 @@ const ProductsPage = () => {
       params.append('page', currentPage);
       params.append('limit', 12); 
 
-      const response = await axios.get(`${API}/products?${params.toString()}`);
+      // MODIFIED: Use `api.get` from AuthContext for authenticated and base URL handling
+      const response = await api.get(`/products?${params.toString()}`);
       
       setProducts(response.data.products);
       setTotalProducts(response.data.total_products);
@@ -70,157 +68,119 @@ const ProductsPage = () => {
     setCurrentPage(page);
     window.scrollTo(0, 0);
   };
-
+  
+  const handleSortChange = (value) => {
+      setSortBy(value);
+      setCurrentPage(1);
+  }
+  
+  const handleSearchChange = (e) => {
+      setSearchTerm(e.target.value);
+  }
+  
   const renderPagination = () => {
     if (totalPages <= 1) return null;
 
-    const pages = [];
-    const maxPagesToShow = 5;
-    const startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
-    const endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
-
-    if (startPage > 1) {
-      pages.push(
-        <PaginationItem key="1">
-          <PaginationLink onClick={() => handlePageChange(1)}>1</PaginationLink>
-        </PaginationItem>
-      );
-      if (startPage > 2) {
-        pages.push(<PaginationItem key="start-ellipsis"><PaginationEllipsis /></PaginationItem>);
-      }
-    }
-
-    for (let i = startPage; i <= endPage; i++) {
-      pages.push(
-        <PaginationItem key={i}>
-          <PaginationLink isActive={i === currentPage} onClick={() => handlePageChange(i)}>
-            {i}
-          </PaginationLink>
-        </PaginationItem>
-      );
-    }
-
-    if (endPage < totalPages) {
-      if (endPage < totalPages - 1) {
-        pages.push(<PaginationItem key="end-ellipsis"><PaginationEllipsis /></PaginationItem>);
-      }
-      pages.push(
-        <PaginationItem key={totalPages}>
-          <PaginationLink onClick={() => handlePageChange(totalPages)}>{totalPages}</PaginationLink>
-        </PaginationItem>
-      );
-    }
-
     return (
-      <Pagination className="mt-12">
-        <PaginationContent>
-          <PaginationItem>
-            <PaginationPrevious onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} />
-          </PaginationItem>
-          {pages}
-          <PaginationItem>
-            <PaginationNext onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} />
-          </PaginationItem>
-        </PaginationContent>
-      </Pagination>
+        <div className="flex justify-center items-center gap-4 mt-12">
+            <Button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                variant="outline"
+                className="rounded-none border-black hover:bg-black hover:text-white"
+            >
+                Previous
+            </Button>
+            <span className="text-sm text-gray-700">
+                Page {currentPage} of {totalPages}
+            </span>
+            <Button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                variant="outline"
+                className="rounded-none border-black hover:bg-black hover:text-white"
+            >
+                Next
+            </Button>
+        </div>
     );
   };
-
-  const filteredProducts = products; 
+  
+  const handleClearSearch = () => {
+      setSearchTerm('');
+      setDebouncedSearchTerm('');
+      setCurrentPage(1);
+  }
 
   return (
-    <div className="min-h-screen pt-24 bg-white"> {/* Added pt-24 for navbar spacing */}
+    <div className="min-h-screen pt-32 bg-white"> 
+      
+      <Helmet>
+        <title>Shop All Premium Shirts | Fifth Beryl Collection</title>
+        <meta name="description" content={`Discover the complete collection of Fifth Beryl's handcrafted premium shirts. ${totalProducts > 0 ? `Currently showing ${totalProducts} shirts.` : 'No shirts found.'} Free shipping available.`} />
+        <link rel="canonical" href={window.location.href} />
+      </Helmet>
+      
       <Navbar />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-12"
+          className="mb-12 border-b border-gray-100 pb-8"
         >
-          <h1 className="text-4xl sm:text-5xl font-bold mb-4 playfair text-black" data-testid="products-title">
-            Our Collection
-          </h1>
-          <p className="text-gray-600 text-lg">Discover premium quality shirts for every occasion</p>
+          <h1 className="text-5xl font-bold mb-3 playfair text-black">The Collection</h1>
+          <p className="text-gray-500">Shop all {totalProducts} shirts available</p>
         </motion.div>
 
-        <div className="flex flex-col sm:flex-row gap-4 mb-8">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-            <Input
-              type="text"
-              placeholder="Search products..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 border-gray-300 focus:border-black rounded-none"
-              data-testid="search-input"
-            />
+        {/* Filters and Search */}
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-10">
+          <div className="flex w-full md:w-1/3 space-x-2">
+            <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                <Input
+                  type="text"
+                  placeholder="Search products..."
+                  value={searchTerm}
+                  onChange={handleSearchChange}
+                  className="pl-10 border-gray-300 focus:border-black rounded-none"
+                  data-testid="search-input"
+                />
+            </div>
           </div>
-          <Select value={sortBy} onValueChange={(value) => { setSortBy(value); setCurrentPage(1); }}>
-            <SelectTrigger className="w-full sm:w-48 border-gray-300 focus:border-black rounded-none" data-testid="sort-select">
-              <SelectValue placeholder="Sort by" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="name">Sort by Name</SelectItem>
-              <SelectItem value="price-low">Price: Low to High</SelectItem>
-              <SelectItem value="price-high">Price: High to Low</SelectItem>
-            </SelectContent>
-          </Select>
+
+          <div className="flex items-center gap-3">
+            <Label htmlFor="sort" className="text-sm text-gray-700">Sort By:</Label>
+            <Select value={sortBy} onValueChange={handleSortChange}>
+              <SelectTrigger id="sort" className="w-full sm:w-[180px] rounded-none border-gray-300 focus:border-black">
+                <SelectValue placeholder="Sort Order" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name">Name (A-Z)</SelectItem>
+                <SelectItem value="price-low">Price (Low to High)</SelectItem>
+                <SelectItem value="price-high">Price (High to Low)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
+        {/* Product Grid */}
         {loading ? (
-          <div className="flex justify-center py-20">
-            <div className="spinner" />
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
+            {[...Array(12)].map((_, i) => (
+              <div key={i} className="aspect-[4/5] bg-gray-100 animate-pulse" />
+            ))}
           </div>
-        ) : filteredProducts.length === 0 ? (
-          <div className="text-center py-20" data-testid="no-products">
-            <p className="text-gray-600 text-lg">No products found</p>
+        ) : products.length === 0 ? (
+          <div className="text-center py-20">
+            <p className="text-xl text-gray-600">No products found {debouncedSearchTerm && `matching "${debouncedSearchTerm}"`}.</p>
+            {debouncedSearchTerm && <Button onClick={handleClearSearch} className="mt-4 bg-black text-white rounded-none">Clear Search</Button>}
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-8" data-testid="products-grid">
-              {filteredProducts.map((product, index) => (
-                <motion.div
-                  key={product.id}
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="group cursor-pointer"
-                  onClick={() => navigate(`/product/${product.id}`)}
-                  data-testid={`product-card-${index}`}
-                >
-                  <div className="bg-white overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
-                    <div className="relative overflow-hidden aspect-[4/5] bg-gray-50">
-                      <img
-                        src={product.images[0]?.url.replace('/upload/', '/upload/w_400,q_auto,f_auto/') || '/placeholder.jpg'}
-                        alt={product.name}
-                        className="w-full h-full object-cover mix-blend-multiply group-hover:scale-105 transition-transform duration-500"
-                      />
-                      {product.featured && (
-                        <div className="absolute top-3 left-3 bg-black text-white px-2 py-1 text-[10px] font-bold uppercase tracking-widest">
-                          Featured
-                        </div>
-                      )}
-                    </div>
-                    <div className="p-4 text-center">
-                      <h3 className="text-lg font-medium mb-1 playfair text-black group-hover:underline decoration-1 underline-offset-4">{product.name}</h3>
-                      <p className="text-gray-500 mb-2 line-clamp-1 text-xs">{product.description}</p>
-                      <div className="flex justify-center items-center gap-2">
-                        <span className="text-lg font-bold text-black">₹{product.price}</span>
-                      </div>
-                      {/* Color dots */}
-                       <div className="flex justify-center gap-1 mt-2">
-                          {product.variants?.slice(0, 3).map((variant, i) => (
-                            <div
-                              key={i}
-                              className="w-3 h-3 rounded-full border border-gray-300"
-                              style={{ backgroundColor: variant.color_code }}
-                            />
-                          ))}
-                       </div>
-                    </div>
-                  </div>
-                </motion.div>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
+              {products.map((product, index) => (
+                <ProductCard key={product.id} product={product} index={index} />
               ))}
             </div>
             

@@ -23,10 +23,10 @@ import cloudinary.api
 from pymongo import ASCENDING, DESCENDING
 import math
 
-# --- IMPORTS FOR CUSTOM AUTH ---
+# --- IMPORTS FOR SECURITY ---
+# REMOVED: fastapi_limiter, redis.asyncio.Redis (from previous step's fix)
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-# Removed Google-related imports
 import httpx
 # --- END IMPORTS ---
 
@@ -38,10 +38,9 @@ load_dotenv(ROOT_DIR / '.env')
 SECRET_KEY = os.environ.get('SECRET_KEY', 'your-fallback-secret-key-please-change-me')
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7 # 7 days
-
-# Removed Google OAuth variables
 FRONTEND_URL = os.environ.get('REACT_APP_URL', 'http://localhost:3000')
 
+# REMOVED: REDIS_URL configuration
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
@@ -69,6 +68,15 @@ cloudinary.config(
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
+# --- Startup Event: Initialize Rate Limiter ---
+@app.on_event("startup")
+async def startup_event():
+    # Rate Limiting initialization is currently skipped to bypass Redis dependency.
+    try:
+        # Placeholder for future Redis connection
+        logger.info("Rate Limiting initialization skipped.")
+    except Exception as e:
+        logger.error(f"Failed to initialize Rate Limiting: {e}")
 
 # --- Password & JWT Helper Functions ---
 
@@ -123,7 +131,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     
     user = await db.users.find_one({"_id": token_data.user_id})
     if user is None:
-        raise credentials_exception
+        raise HTTPException(status_code=404, detail="User not found")
     return user
 
 # --- Admin-only dependency ---
@@ -158,6 +166,7 @@ class Product(BaseModel):
     mrp: Optional[float] = None
     price: float
     slug: str # ADDED: URL-friendly slug
+    fit: str = Field(..., description="Shirt fit type.") # ADDED: Fit field
     images: List[ProductImage]
     variants: List[ProductVariant]
     category: str = "shirts"
@@ -171,10 +180,11 @@ class PaginatedProducts(BaseModel):
     current_page: int
 
 class ProductCreate(BaseModel):
-    name: str
-    description: str
-    mrp: Optional[float] = None
-    price: float
+    name: str = Field(..., min_length=3, max_length=100) # VALIDATION ADDED
+    description: str = Field(..., min_length=10) # VALIDATION ADDED
+    mrp: Optional[float] = Field(None, gt=0, description="Maximum Retail Price, must be positive.") # VALIDATION ADDED
+    price: float = Field(..., gt=0, description="Sale Price, must be positive.") # VALIDATION ADDED
+    fit: str = Field(..., pattern="^(Slim Fit|Regular Fit|Relaxed Fit|Tailored Fit)$") # ADDED: Fit field with validation
     images: List[ProductImage]
     variants: List[ProductVariant]
     category: str = "shirts"
@@ -193,10 +203,10 @@ class Coupon(BaseModel):
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     
 class CouponCreate(BaseModel):
-    code: str
+    code: str = Field(..., min_length=3, max_length=15, pattern="^[A-Z0-9]+$") # VALIDATION ADDED
     discount_type: str = Field(..., pattern="^(fixed|percentage)$")
-    discount_value: float
-    min_purchase: float = 0.0
+    discount_value: float = Field(..., gt=0) # VALIDATION ADDED
+    min_purchase: float = Field(0.0, ge=0) # VALIDATION ADDED
     expiry_date: Optional[str] = None
 
 class CouponValidation(BaseModel):
@@ -212,13 +222,12 @@ class CouponResponse(BaseModel):
     message: str
 
 class Review(BaseModel):
-    model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     product_id: str
     user_id: str
     user_name: str
-    rating: int
-    comment: str
+    rating: int = Field(..., ge=1, le=5) # VALIDATION ADDED
+    comment: str = Field(..., min_length=10, max_length=500) # VALIDATION ADDED
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 class ReviewCreate(BaseModel):
@@ -255,11 +264,17 @@ class Order(BaseModel):
     discount_amount: float = 0.0
     final_amount: float = Field(..., description="Total amount after discount")
     coupon_code: Optional[str] = None
-    payment_id: Optional[str] = None
-    razorpay_order_id: Optional[str] = None
-    status: str = "pending"
+    tracking_number: Optional[str] = None
+    courier: Optional[str] = None
+    status: str = Field("pending", pattern="^(pending|processing|shipped|delivered|cancelled|abandoned)$") # MODIFIED: Added abandoned
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class OrderUpdateAdmin(BaseModel):
+    status: str = Field(..., pattern="^(pending|processing|shipped|delivered|cancelled|abandoned)$") # MODIFIED: Added abandoned
+    tracking_number: Optional[str] = None
+    courier: Optional[str] = None
+
 
 class OrderCreate(BaseModel):
     items: List[OrderItem]
@@ -297,7 +312,7 @@ class UserBase(BaseModel):
     name: str
 
 class UserCreate(UserBase):
-    password: str
+    password: str = Field(..., min_length=8) # VALIDATION ADDED
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -456,7 +471,7 @@ async def delete_coupon(coupon_id: str, user: dict = Depends(verify_admin)):
 
 auth_router = APIRouter(prefix="/api/auth")
 
-@auth_router.post("/register", response_model=UserProfile)
+@auth_router.post("/register", response_model=UserProfile) # RATE LIMIT REMOVED
 async def register_user(user: UserCreate):
     existing_user = await db.users.find_one({"email": user.email})
     if existing_user:
@@ -477,7 +492,7 @@ async def register_user(user: UserCreate):
     await db.users.insert_one(new_profile)
     return new_profile
 
-@auth_router.post("/login", response_model=Token)
+@auth_router.post("/login", response_model=Token) # RATE LIMIT REMOVED
 async def login_for_access_token(form_data: UserLogin):
     user = await db.users.find_one({"email": form_data.email.lower()})
     if not user or not user.get("hashed_password") or not verify_password(form_data.password, user.get("hashed_password")):
@@ -539,6 +554,18 @@ async def get_featured_products():
     products = await db.products.find({"featured": True}, {"_id": 0}).to_list(100)
     return products
 
+# NEW ENDPOINT: Get recommendations (Simulated)
+@api_router.get("/products/recommendations/{product_id}", response_model=List[Product])
+async def get_product_recommendations(product_id: str):
+    # This simulates "Customers Also Bought" by returning up to 4 other featured products
+    # excluding the current product ID.
+    recommendations = await db.products.find(
+        {"featured": True, "id": {"$ne": product_id}}, 
+        {"_id": 0}
+    ).limit(4).to_list(4)
+    return recommendations
+
+
 @api_router.get("/products/{slug_or_id}", response_model=Product)
 async def get_product(slug_or_id: str):
     # Try finding by ID (UUID) for existing links first
@@ -571,7 +598,7 @@ async def delete_product(product_id: str, user: dict = Depends(verify_admin)):
     return {"message": "Product deleted successfully"}
 
 # --- Review Routes ---
-@api_router.post("/reviews", response_model=Review)
+@api_router.post("/reviews", response_model=Review) # RATE LIMIT REMOVED
 async def create_review(review: ReviewCreate, user: dict = Depends(get_current_user)): 
     review_obj = Review(
         **review.model_dump(),
@@ -680,18 +707,65 @@ async def get_all_orders(user: dict = Depends(verify_admin)):
     return orders
 
 @api_router.put("/orders/{order_id}/status")
-async def update_order_status(order_id: str, status: str, user: dict = Depends(verify_admin)): 
-    valid_statuses = ["pending", "processing", "shipped", "delivered", "cancelled"]
-    if status not in valid_statuses:
+async def update_order_status(order_id: str, update_data: OrderUpdateAdmin, user: dict = Depends(verify_admin)): 
+    # Use OrderUpdateAdmin model
+    valid_statuses = ["pending", "processing", "shipped", "delivered", "cancelled", "abandoned"] # MODIFIED
+    if update_data.status not in valid_statuses:
         raise HTTPException(status_code=400, detail="Invalid status")
+    
+    update_fields = {
+        "status": update_data.status,
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Only set tracking fields if status is 'shipped' or provided
+    if update_data.status == 'shipped' or update_data.tracking_number is not None or update_data.courier is not None:
+        update_fields['tracking_number'] = update_data.tracking_number
+        update_fields['courier'] = update_data.courier
+
     await db.orders.update_one(
         {"id": order_id},
-        {"$set": {
-            "status": status,
-            "updated_at": datetime.now(timezone.utc).isoformat()
-        }}
+        {"$set": update_fields}
     )
-    return {"message": "Order status updated successfully"}
+    return {"message": "Order status and tracking updated successfully"}
+
+# NEW ENDPOINT: Check Abandoned Carts
+@api_router.post("/admin/check-abandoned-carts")
+async def check_abandoned_carts(user: dict = Depends(verify_admin)):
+    """
+    Identifies and marks 'pending' orders older than 2 hours as 'abandoned'.
+    Returns a list of newly abandoned orders for email processing.
+    """
+    time_limit = datetime.now(timezone.utc) - timedelta(hours=2)
+    time_limit_iso = time_limit.isoformat()
+    
+    # 1. Find orders that are still 'pending' and older than the time limit
+    query = {
+        "status": "pending",
+        "created_at": {"$lte": time_limit_iso}
+    }
+    
+    # 2. Update these orders to 'abandoned'
+    update_data = {
+        "$set": {
+            "status": "abandoned",
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
+    }
+    
+    # Fetch the orders first (for email data)
+    abandoned_orders = await db.orders.find(query, {"_id": 0}).to_list(1000)
+    
+    # Then update the status in the database
+    if abandoned_orders:
+        order_ids = [order['id'] for order in abandoned_orders]
+        await db.orders.update_many({"id": {"$in": order_ids}}, update_data)
+        
+    return {
+        "message": f"Found and marked {len(abandoned_orders)} orders as abandoned.",
+        "abandoned_orders": abandoned_orders
+    }
+
 
 # --- Analytics Routes ---
 @api_router.get("/analytics/dashboard")

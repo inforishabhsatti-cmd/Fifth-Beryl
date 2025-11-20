@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { HelmetProvider } from 'react-helmet-async'; // ADDED: HelmetProvider
 
 import './App.css';
 // Contexts
@@ -58,57 +59,60 @@ function App() {
       <AuthProvider>
         <CartProvider>
           <WishlistProvider>
-            <Router>
-              <div className="relative min-h-screen">
-                
-                {/* 1. Top Ticker Label (Fixed at top: 0, z-50) */}
-                <TickerLabel position="top" /> 
+            {/* WRAPPER: HelmetProvider enabled dynamic SEO tags */}
+            <HelmetProvider> 
+              <Router>
+                <div className="relative min-h-screen">
+                  
+                  {/* 1. Top Ticker Label (Fixed at top: 0, z-50) */}
+                  <TickerLabel position="top" /> 
 
-                {/* 2. Navbar (Assuming it is fixed/sticky and starts at top: 2rem to clear the Ticker) */}
-                <Navbar />
-                
-                <main>
-                  <Routes>
-                    <Route path="/" element={<HomePage />} />
-                    <Route path="/products" element={<ProductsPage />} />
-                    <Route path="/product/:id" element={<ProductDetailPage />} />
-                    <Route path="/cart" element={<CartPage />} />
-                    <Route path="/checkout" element={<CheckoutPage />} />
-                    <Route path="/login" element={<LoginPage />} />
-                    <Route path="/profile" element={<ProfilePage />} />
-                    <Route path="/orders" element={<OrdersPage />} />
-                    <Route path="/wishlist" element={<WishlistPage />} />
+                  {/* 2. Navbar (Assuming it is fixed/sticky and starts at top: 2rem to clear the Ticker) */}
+                  <Navbar />
+                  
+                  <main>
+                    <Routes>
+                      <Route path="/" element={<HomePage />} />
+                      <Route path="/products" element={<ProductsPage />} />
+                      <Route path="/product/:id" element={<ProductDetailPage />} />
+                      <Route path="/cart" element={<CartPage />} />
+                      <Route path="/checkout" element={<CheckoutPage />} />
+                      <Route path="/login" element={<LoginPage />} />
+                      <Route path="/profile" element={<ProfilePage />} />
+                      <Route path="/orders" element={<OrdersPage />} />
+                      <Route path="/wishlist" element={<WishlistPage />} />
 
-                    {/* Admin Routes */}
-                    <Route path="/admin" element={<AdminRoute />}>
-                      <Route index element={<AdminDashboard />} />
-                      <Route path="products" element={<AdminProducts />} />
-                      <Route path="orders" element={<AdminOrders />} />
-                      <Route path="inventory" element={<AdminInventory />} />
-                      <Route path="analytics" element={<AdminAnalytics />} />
-                      <Route path="landing-page" element={<AdminLandingPage />} />
-                      <Route path="coupons" element={<AdminCoupons />} />
-                      <Route path="ticker" element={<AdminTicker />} /> 
-                      {/* Catch-all for /admin/* */}
-                      <Route path="*" element={<Navigate to="/admin" />} />
-                    </Route>
+                      {/* Admin Routes */}
+                      <Route path="/admin" element={<AdminRoute />}>
+                        <Route index element={<AdminDashboard />} />
+                        <Route path="products" element={<AdminProducts />} />
+                        <Route path="orders" element={<AdminOrders />} />
+                        <Route path="inventory" element={<AdminInventory />} />
+                        <Route path="analytics" element={<AdminAnalytics />} />
+                        <Route path="landing-page" element={<AdminLandingPage />} />
+                        <Route path="coupons" element={<AdminCoupons />} />
+                        <Route path="ticker" element={<AdminTicker />} /> 
+                        {/* Catch-all for /admin/* */}
+                        <Route path="*" element={<Navigate to="/admin" />} />
+                      </Route>
 
-                    {/* Catch-all route */}
-                    <Route path="*" element={<Navigate to="/" />} />
-                  </Routes>
-                </main>
-                
-                {/* Bottom Ticker Label above the Footer */}
-                <TickerLabel position="bottom" /> 
+                      {/* Catch-all route */}
+                      <Route path="*" element={<Navigate to="/" />} />
+                    </Routes>
+                  </main>
+                  
+                  {/* Bottom Ticker Label above the Footer */}
+                  <TickerLabel position="bottom" /> 
 
-                <Footer /> 
+                  <Footer /> 
 
-                {/* 2. Splash Screen Overlay (Renders on top if loading) */}
-                {isShutterLoading && (
-                  <SplashShutter onComplete={() => setIsShutterLoading(false)} />
-                )}
-              </div>
-            </Router>
+                  {/* 2. Splash Screen Overlay (Renders on top if loading) */}
+                  {isShutterLoading && (
+                    <SplashShutter onComplete={() => setIsShutterLoading(false)} />
+                  )}
+                </div>
+              </Router>
+            </HelmetProvider>
             <Toaster />
           </WishlistProvider>
         </CartProvider>
