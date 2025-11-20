@@ -134,13 +134,15 @@ const AdminProducts = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   
-  // MODIFIED: Added mrp and fit to formData state
+  // UPDATED: Added color and color_code to formData state
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     mrp: '',
     price: '', // price is Sale Price
     fit: 'Regular Fit', // ADDED: Default fit
+    color: '', // NEW: Main product color name
+    color_code: '#000000', // NEW: Main product color code
     category: 'shirts',
     featured: false,
     images: [],
@@ -175,8 +177,9 @@ const AdminProducts = () => {
 
   const handleSaveProduct = async () => {
     try {
-      if (!formData.name || !formData.price || !formData.fit || !formData.description) {
-        toast.error('Name, Description, Price, and Fit are required');
+      // UPDATED: Added validation for color and color_code
+      if (!formData.name || !formData.price || !formData.fit || !formData.description || !formData.color || !formData.color_code) {
+        toast.error('Name, Description, Price, Fit, and Main Color are required');
         return;
       }
       
@@ -229,6 +232,8 @@ const AdminProducts = () => {
       mrp: product.mrp ? product.mrp.toString() : '',
       price: product.price ? product.price.toString() : '',
       fit: product.fit || 'Regular Fit', // ADDED: Read fit
+      color: product.color || '', // NEW: Read main color name
+      color_code: product.color_code || '#000000', // NEW: Read main color code
       category: product.category || 'shirts',
       featured: product.featured || false,
       images: product.images || [],
@@ -244,6 +249,8 @@ const AdminProducts = () => {
       mrp: '',
       price: '',
       fit: 'Regular Fit', // ADDED: Reset fit
+      color: '', // NEW: Reset color
+      color_code: '#000000', // NEW: Reset color code
       category: 'shirts',
       featured: false,
       images: [],
@@ -284,7 +291,8 @@ const AdminProducts = () => {
               <div className="space-y-8 py-4">
                 
                 {/* 1. General Info Section */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* UPDATED: Changed grid to 4 columns on large screens to fit new fields */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                   <div>
                     <Label htmlFor="name">Product Name *</Label>
                     <Input 
@@ -311,6 +319,42 @@ const AdminProducts = () => {
                             <SelectItem value="Tailored Fit">Tailored Fit</SelectItem>
                         </SelectContent>
                     </Select>
+                  </div>
+
+                  {/* NEW FIELD: Main Color Name */}
+                  <div>
+                    <Label htmlFor="color">Main Color Name *</Label>
+                    <Input
+                      id="color" 
+                      value={formData.color} 
+                      onChange={(e) => setFormData({...formData, color: e.target.value})}
+                      className="rounded-none border-gray-300 focus:border-black"
+                      placeholder="e.g., White"
+                      required
+                    />
+                  </div>
+
+                  {/* NEW FIELD: Main Color Code */}
+                  <div>
+                    <Label htmlFor="color_code">Main Color Code *</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Input
+                        id="color_code"
+                        type="color"
+                        value={formData.color_code}
+                        onChange={(e) => setFormData({...formData, color_code: e.target.value})}
+                        className="rounded-none border-gray-300 focus:border-black w-10 h-10 p-0 cursor-pointer"
+                        required
+                      />
+                      <Input
+                        type="text"
+                        value={formData.color_code}
+                        onChange={(e) => setFormData({...formData, color_code: e.target.value})}
+                        className="rounded-none border-gray-300 focus:border-black flex-grow"
+                        placeholder="#RRGGBB"
+                        required
+                      />
+                    </div>
                   </div>
                   
                   <div>
@@ -424,6 +468,7 @@ const AdminProducts = () => {
                   <tr className="bg-gray-50 border-b border-gray-200">
                     <th className="text-left py-4 px-6 font-semibold text-gray-900 uppercase tracking-wider text-sm">Image</th>
                     <th className="text-left py-4 px-6 font-semibold text-gray-900 uppercase tracking-wider text-sm">Name</th>
+                    <th className="text-left py-4 px-6 font-semibold text-gray-900 uppercase tracking-wider text-sm">Color</th>
                     <th className="text-left py-4 px-6 font-semibold text-gray-900 uppercase tracking-wider text-sm">MRP</th> 
                     <th className="text-left py-4 px-6 font-semibold text-gray-900 uppercase tracking-wider text-sm">Sale Price</th> 
                     <th className="text-left py-4 px-6 font-semibold text-gray-900 uppercase tracking-wider text-sm">Variants</th>
@@ -446,13 +491,24 @@ const AdminProducts = () => {
                         />
                       </td>
                       <td className="py-4 px-6 font-medium text-black">{product.name}</td>
+                      <td className="py-4 px-6">
+                        {/* ADDED: Display color swatch and name */}
+                        <div className="flex items-center gap-2">
+                            <div 
+                                className="w-4 h-4 rounded-full border border-gray-300" 
+                                style={{ backgroundColor: product.color_code || '#ffffff' }}
+                                title={product.color}
+                            ></div>
+                            <span className="text-gray-600 capitalize">{product.color || '-'}</span>
+                        </div>
+                      </td>
                       <td className="py-4 px-6 text-gray-600">
-                        {product.mrp ? `₹${product.mrp.toFixed(2)}` : '-'}
+                        {product.mrp ? `₹${product.mrp?.toFixed(2) || '0.00'}` : '-'}
                       </td>
                       <td className="py-4 px-6 font-semibold text-black">
-                        ₹{product.price.toFixed(2)}
+                        ₹{product.price?.toFixed(2) || '0.00'}
                       </td>
-                      <td className="py-4 px-6 text-gray-600">{product.variants.length} variants</td>
+                      <td className="py-4 px-6 text-gray-600">{product.variants?.length || 0} variants</td>
                       <td className="py-4 px-6 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <Button variant="ghost" size="icon" onClick={() => openEditModal(product)}>

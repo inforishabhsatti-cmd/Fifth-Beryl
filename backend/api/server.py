@@ -166,7 +166,9 @@ class Product(BaseModel):
     mrp: Optional[float] = None
     price: float
     slug: str # ADDED: URL-friendly slug
-    fit: str = Field(..., description="Shirt fit type.") # ADDED: Fit field
+    fit: str = Field('Regular Fit', description="Shirt fit type.") # MODIFIED: Added default 'Regular Fit' for backward compatibility
+    color: Optional[str] = Field(None, description="Main product color name.") # FIX: Made Optional for backward compatibility with old data
+    color_code: Optional[str] = Field(None, description="Main product color code.") # FIX: Made Optional for backward compatibility with old data
     images: List[ProductImage]
     variants: List[ProductVariant]
     category: str = "shirts"
@@ -185,6 +187,8 @@ class ProductCreate(BaseModel):
     mrp: Optional[float] = Field(None, gt=0, description="Maximum Retail Price, must be positive.") # VALIDATION ADDED
     price: float = Field(..., gt=0, description="Sale Price, must be positive.") # VALIDATION ADDED
     fit: str = Field(..., pattern="^(Slim Fit|Regular Fit|Relaxed Fit|Tailored Fit)$") # ADDED: Fit field with validation
+    color: str = Field(..., min_length=1, max_length=50) # ADDED: Main color name with validation
+    color_code: str = Field(..., pattern="^#[0-9a-fA-F]{6}$") # ADDED: Main color code with validation
     images: List[ProductImage]
     variants: List[ProductVariant]
     category: str = "shirts"

@@ -78,3 +78,6 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #333333;
 }
+footer input::placeholder {
+  color: #777;
+}
