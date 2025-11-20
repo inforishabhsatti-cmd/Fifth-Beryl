@@ -1,5 +1,5 @@
 // src/pages/CheckoutPage.js
-import { useState, useEffect } from 'react'; 
+import { useState, useEffect, useMemo } from 'react'; 
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Navbar from '../components/Navbar';
@@ -10,19 +10,26 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import axios from 'axios';
-
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+import { DollarSign } from 'lucide-react';
 
 const CheckoutPage = () => {
   const navigate = useNavigate();
   const { cart, cartTotal, clearCart } = useCart();
   
-  // FIX: Removed signInWithGoogle, renamed currentUser to user
   const { currentUser: user, api } = useAuth(); 
   
   const [loading, setLoading] = useState(false); 
   const [dataLoading, setDataLoading] = useState(true); 
+  
+  // NEW COUPON STATES
+  const [couponCode, setCouponCode] = useState('');
+  const [discount, setDiscount] = useState({ 
+    amount: 0.0, 
+    code: null, 
+    message: 'Have a coupon? Enter it here.',
+    isValid: false
+  });
+  const [couponLoading, setCouponLoading] = useState(false);
   
   const [shippingAddress, setShippingAddress] = useState({
     name: '',
@@ -34,6 +41,19 @@ const CheckoutPage = () => {
     postal_code: '',
     country: 'India'
   });
+
+  // CALCULATED FINAL TOTAL
+  const finalTotal = useMemo(() => {
+    return cartTotal - discount.amount;
+  }, [cartTotal, discount.amount]);
+  
+  // Recalculate discount if cartTotal changes (e.g., if a percentage coupon is applied)
+  useEffect(() => {
+    if (discount.code && discount.isValid) {
+        // We ensure we re-validate the coupon if cartTotal changes, using the currently applied code
+        handleApplyCoupon(discount.code); 
+    }
+  }, [cartTotal]); 
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -70,6 +90,45 @@ const CheckoutPage = () => {
       ...shippingAddress,
       [e.target.name]: e.target.value
     });
+  };
+
+  const handleApplyCoupon = async (codeOverride = null) => {
+    const code = codeOverride || couponCode;
+    if (!code) {
+      toast.error('Please enter a coupon code.');
+      return;
+    }
+    
+    setCouponLoading(true);
+    setDiscount({ amount: 0.0, code: null, message: 'Validating...', isValid: false });
+
+    try {
+      const response = await api.post('/coupons/validate', {
+        code: code,
+        total_amount: cartTotal
+      });
+      
+      const data = response.data;
+      setDiscount({
+        amount: data.discount_amount,
+        code: code.toUpperCase(),
+        message: data.message,
+        isValid: true
+      });
+      toast.success('Coupon applied!');
+    } catch (error) {
+      const errorMessage = error.response?.data?.detail || 'Invalid coupon code or requirements not met.';
+      setDiscount({ amount: 0.0, code: null, message: errorMessage, isValid: false });
+      toast.error(errorMessage);
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+  
+  const handleRemoveCoupon = () => {
+    setCouponCode('');
+    setDiscount({ amount: 0.0, code: null, message: 'Coupon removed.', isValid: false });
+    toast.info('Coupon removed.');
   };
 
   const loadRazorpay = () => {
@@ -112,18 +171,20 @@ const CheckoutPage = () => {
           color: item.variant.color,
           size: item.size,
           quantity: item.quantity,
-          price: item.product.price
+          price: item.product.price // Price paid per item
         })),
         shipping_address: shippingAddress,
-        total_amount: cartTotal
+        total_amount: cartTotal, // Original total before discount
+        coupon_code: discount.isValid ? discount.code : undefined // Send applied coupon code
       };
 
+      // API applies discount and calculates final amount for Razorpay
       const response = await api.post('/orders/create-razorpay-order', orderData);
       const { order_id, razorpay_order_id, amount, currency } = response.data;
 
       const options = {
         key: process.env.REACT_APP_RAZORPAY_KEY_ID,
-        amount: amount,
+        amount: amount, // Amount is the final amount after discount (in paise)
         currency: currency,
         name: 'Fifth Beryl', 
         description: 'Premium Shirts',
@@ -151,7 +212,7 @@ const CheckoutPage = () => {
           contact: shippingAddress.phone
         },
         theme: {
-          color: '#000000' // FIX: Updated to Black
+          color: '#000000'
         }
       };
 
@@ -342,6 +403,44 @@ const CheckoutPage = () => {
             <div className="bg-gray-50 p-8 sticky top-24 border border-gray-100">
               <h2 className="text-xl font-bold mb-6 playfair text-black">Order Summary</h2>
               
+              {/* Coupon Form */}
+              <div className="border border-gray-200 p-4 mb-6">
+                <Label htmlFor="coupon">Apply Coupon</Label>
+                <div className="flex gap-2 mt-1">
+                  <Input
+                    id="coupon"
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                    placeholder="COUPONCODE"
+                    className="bg-white border-gray-300 focus:border-black rounded-none h-10 uppercase"
+                    disabled={discount.isValid}
+                  />
+                  {!discount.isValid ? (
+                    <Button
+                      onClick={() => handleApplyCoupon()}
+                      disabled={couponLoading || !couponCode}
+                      className="bg-black hover:bg-gray-800 text-white rounded-none h-10 px-4"
+                    >
+                      {couponLoading ? '...' : 'Apply'}
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={handleRemoveCoupon}
+                      variant="destructive"
+                      className="rounded-none h-10 px-4"
+                    >
+                      Remove
+                    </Button>
+                  )}
+                </div>
+                <p 
+                    className={`text-xs mt-2 ${discount.isValid ? 'text-green-600' : discount.code ? 'text-red-500' : 'text-gray-500'}`}
+                >
+                    {discount.message}
+                </p>
+              </div>
+
+
               <div className="space-y-4 mb-8">
                 {cart.map((item, index) => (
                   <div key={index} className="flex justify-between text-sm">
@@ -361,10 +460,21 @@ const CheckoutPage = () => {
                     <span className="text-gray-600">Shipping</span>
                     <span className="font-medium text-black">Free</span>
                   </div>
+                  
+                  {/* Discount Row */}
+                  {discount.amount > 0 && (
+                     <div className="flex justify-between mb-2 text-sm text-green-600 font-semibold border-b border-gray-200 pb-2">
+                        <span className='flex items-center'>
+                            <DollarSign size={14} className='mr-1' /> Discount
+                        </span>
+                        <span>- ₹{discount.amount.toFixed(2)}</span>
+                     </div>
+                  )}
+
                   <div className="border-t border-gray-200 pt-4 mt-2">
                     <div className="flex justify-between text-lg font-bold text-black">
                       <span>Total</span>
-                      <span data-testid="checkout-total">₹{cartTotal.toFixed(2)}</span>
+                      <span data-testid="checkout-total">₹{finalTotal.toFixed(2)}</span>
                     </div>
                   </div>
                 </div>
@@ -372,11 +482,11 @@ const CheckoutPage = () => {
 
               <Button
                 onClick={handleCheckout}
-                disabled={loading || dataLoading}
+                disabled={loading || dataLoading || finalTotal <= 0}
                 className="w-full bg-black hover:bg-gray-800 text-white py-6 text-sm uppercase tracking-wider rounded-none shadow-lg"
                 data-testid="place-order-btn"
               >
-                {loading ? 'Processing...' : 'Place Order'}
+                {loading ? 'Processing...' : `Pay ₹${finalTotal.toFixed(2)}`}
               </Button>
             </div>
           </div>

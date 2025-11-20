@@ -14,15 +14,22 @@ export const useCart = () => {
 export const CartProvider = ({ children }) => {
   const [cart, setCart] = useState([]);
 
-  // Load cart from localStorage
+  // Load cart from localStorage on mount
   useEffect(() => {
     const savedCart = localStorage.getItem('rishe-cart');
+    // We only set the cart if savedCart exists and is parsable.
     if (savedCart) {
-      setCart(JSON.parse(savedCart));
+      try {
+        setCart(JSON.parse(savedCart));
+      } catch (e) {
+        console.error("Failed to parse cart from local storage:", e);
+        // Clear corrupt storage
+        localStorage.removeItem('rishe-cart');
+      }
     }
   }, []);
 
-  // Save cart to localStorage
+  // Save cart to localStorage whenever cart state changes
   useEffect(() => {
     localStorage.setItem('rishe-cart', JSON.stringify(cart));
   }, [cart]);

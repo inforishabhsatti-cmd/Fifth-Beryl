@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Edit, Trash2, ArrowLeft, X } from 'lucide-react';
+import { Plus, Edit, Trash2, ArrowLeft, X, LayoutGrid } from 'lucide-react'; // ADDED: LayoutGrid for variants
 import { Link } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
@@ -19,16 +19,126 @@ import {
 import { toast } from 'sonner';
 import FileUpload from '../../components/FileUpload';
 
+// Helper component for Variants
+const VariantEditor = ({ variants, setVariants }) => {
+  const addVariant = () => {
+    setVariants([...variants, { color: '', color_code: '#000000', sizes: { "S": 0, "M": 0, "L": 0, "XL": 0 } }]);
+  };
+
+  const updateVariant = (index, field, value) => {
+    const newVariants = [...variants];
+    newVariants[index][field] = value;
+    setVariants(newVariants);
+  };
+
+  const updateStock = (variantIndex, size, stock) => {
+    const newVariants = [...variants];
+    newVariants[variantIndex].sizes[size] = parseInt(stock) || 0;
+    setVariants(newVariants);
+  };
+
+  const removeVariant = (index) => {
+    setVariants(variants.filter((_, i) => i !== index));
+  };
+  
+  // Hardcoded sizes for simplicity
+  const defaultSizes = ["S", "M", "L", "XL"]; 
+
+  return (
+    <div className="space-y-4 border border-gray-200 p-4 bg-gray-50">
+      <h3 className="font-semibold text-lg text-black flex items-center gap-2">
+        <LayoutGrid size={18} /> Product Variants
+      </h3>
+      
+      {variants.map((variant, vIndex) => (
+        <div key={vIndex} className="bg-white p-4 border border-gray-100 space-y-4">
+          <div className="flex justify-between items-start">
+            <h4 className="font-medium text-black">Variant #{vIndex + 1}</h4>
+            <Button variant="ghost" size="icon" onClick={() => removeVariant(vIndex)}>
+              <X size={16} className="text-red-500" />
+            </Button>
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor={`color-${vIndex}`}>Color Name</Label>
+              <Input
+                id={`color-${vIndex}`}
+                value={variant.color}
+                onChange={(e) => updateVariant(vIndex, 'color', e.target.value)}
+                className="rounded-none border-gray-300 focus:border-black"
+                placeholder="e.g., Ocean Blue"
+              />
+            </div>
+            <div>
+              <Label htmlFor={`color_code-${vIndex}`}>Color Code</Label>
+              <div className="flex items-center gap-2 mt-1">
+                  <Input
+                    id={`color_code-${vIndex}`}
+                    type="color"
+                    value={variant.color_code}
+                    onChange={(e) => updateVariant(vIndex, 'color_code', e.target.value)}
+                    className="rounded-none border-gray-300 focus:border-black w-10 h-10 p-0"
+                  />
+                  <Input
+                    type="text"
+                    value={variant.color_code}
+                    onChange={(e) => updateVariant(vIndex, 'color_code', e.target.value)}
+                    className="rounded-none border-gray-300 focus:border-black flex-grow"
+                    placeholder="#RRGGBB"
+                  />
+              </div>
+            </div>
+          </div>
+          
+          {/* Stock Inputs */}
+          <div className="pt-4 border-t border-gray-100">
+             <h4 className="font-medium mb-2 text-black">Stock by Size:</h4>
+             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {defaultSizes.map(size => (
+                  <div key={size}>
+                    <Label htmlFor={`stock-${vIndex}-${size}`}>{size}</Label>
+                    <Input
+                      id={`stock-${vIndex}-${size}`}
+                      type="number"
+                      min="0"
+                      value={variant.sizes[size] || 0}
+                      onChange={(e) => updateStock(vIndex, size, e.target.value)}
+                      className="rounded-none border-gray-300 focus:border-black"
+                      placeholder="0"
+                    />
+                  </div>
+                ))}
+             </div>
+          </div>
+        </div>
+      ))}
+      
+      <Button 
+        type="button" 
+        onClick={addVariant} 
+        variant="outline" 
+        className="w-full rounded-none border-dashed border-gray-400 text-gray-600 hover:bg-gray-100"
+      >
+        <Plus size={16} className="mr-2" /> Add Variant
+      </Button>
+    </div>
+  );
+};
+
+
 const AdminProducts = () => {
   const { api } = useAuth();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [dialogOpen, setDialogOpen] = useState(false); // Correct state name
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+  
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    price: '',
+    mrp: '',
+    price: '', // price is Sale Price
     category: 'shirts',
     featured: false,
     images: [],
@@ -64,16 +174,21 @@ const AdminProducts = () => {
   const handleSaveProduct = async () => {
     try {
       if (!formData.name || !formData.price) {
-        toast.error('Name and Price are required');
+        toast.error('Name and Sale Price are required');
         return;
       }
+      
+      // Ensure variants are properly set, at least one standard if none provided
+      const finalVariants = formData.variants.length > 0 ? formData.variants : [
+           { color: "Standard", color_code: "#000000", sizes: { "S": 10, "M": 10, "L": 10, "XL": 10 } }
+      ];
 
+      // Prepare data for API
       const productData = {
         ...formData,
         price: parseFloat(formData.price),
-        variants: formData.variants.length > 0 ? formData.variants : [
-           { color: "Standard", color_code: "#000000", sizes: { "S": 10, "M": 10, "L": 10, "XL": 10 } }
-        ]
+        mrp: formData.mrp ? parseFloat(formData.mrp) : undefined,
+        variants: finalVariants
       };
 
       if (editingProduct) {
@@ -84,7 +199,7 @@ const AdminProducts = () => {
         toast.success('Product created');
       }
       
-      setDialogOpen(false); // FIX: Use dialogOpen state setter
+      setDialogOpen(false); 
       setEditingProduct(null);
       resetForm();
       fetchProducts();
@@ -108,21 +223,23 @@ const AdminProducts = () => {
   const openEditModal = (product) => {
     setEditingProduct(product);
     setFormData({
-      name: product.name,
-      description: product.description,
-      price: product.price.toString(),
-      category: product.category,
-      featured: product.featured,
-      images: product.images,
-      variants: product.variants
+      name: product.name || '',
+      description: product.description || '',
+      mrp: product.mrp ? product.mrp.toString() : '',
+      price: product.price ? product.price.toString() : '',
+      category: product.category || 'shirts',
+      featured: product.featured || false,
+      images: product.images || [],
+      variants: product.variants || []
     });
-    setDialogOpen(true); // FIX: Use dialogOpen state setter
+    setDialogOpen(true);
   };
 
   const resetForm = () => {
     setFormData({
       name: '',
       description: '',
+      mrp: '',
       price: '',
       category: 'shirts',
       featured: false,
@@ -146,7 +263,7 @@ const AdminProducts = () => {
             <h1 className="text-4xl font-bold playfair text-black" data-testid="admin-products-title">Manage Products</h1>
           </div>
           
-          <Dialog open={dialogOpen} onOpenChange={(open) => { // FIX: Use dialogOpen
+          <Dialog open={dialogOpen} onOpenChange={(open) => { 
              setDialogOpen(open);
              if(!open) { setEditingProduct(null); resetForm(); }
           }}>
@@ -156,49 +273,98 @@ const AdminProducts = () => {
                 Add Product
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white rounded-none border-black">
+            {/* MODIFIED: Increased max-w to 4xl and ensured content is scrollable */}
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-white rounded-none border-black p-6 sm:p-8">
               <DialogHeader>
-                <DialogTitle className="playfair text-2xl">{editingProduct ? 'Edit Product' : 'New Product'}</DialogTitle>
+                <DialogTitle className="playfair text-3xl">{editingProduct ? 'Edit Product' : 'New Product'}</DialogTitle>
               </DialogHeader>
-              <div className="space-y-6 py-4">
-                <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-8 py-4">
+                
+                {/* 1. General Info Section */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <Label htmlFor="name">Name</Label>
+                    <Label htmlFor="name">Product Name *</Label>
                     <Input 
                       id="name" 
                       value={formData.name} 
                       onChange={(e) => setFormData({...formData, name: e.target.value})}
                       className="rounded-none border-gray-300 focus:border-black"
+                      placeholder="E.g., Signature Linen Shirt"
+                      required
                     />
                   </div>
                   <div>
-                    <Label htmlFor="price">Price (₹)</Label>
+                    <Label htmlFor="category">Category</Label>
+                    {/* Using a simple input for category, could be a select in a full application */}
+                    <Input 
+                      id="category" 
+                      value={formData.category} 
+                      onChange={(e) => setFormData({...formData, category: e.target.value})}
+                      className="rounded-none border-gray-300 focus:border-black"
+                      placeholder="e.g., shirts"
+                    />
+                  </div>
+                </div>
+
+                {/* 2. Pricing Section */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 border-t border-b border-gray-100 py-6">
+                  <div>
+                    <Label htmlFor="price">Sale Price (₹) *</Label>
                     <Input 
                       id="price" 
                       type="number" 
                       value={formData.price} 
                       onChange={(e) => setFormData({...formData, price: e.target.value})}
-                      className="rounded-none border-gray-300 focus:border-black"
+                      className="rounded-none border-black text-lg font-medium"
+                      placeholder="1999"
+                      required
                     />
+                  </div>
+                  <div>
+                    <Label htmlFor="mrp">MRP (₹) - Optional</Label>
+                    <Input 
+                      id="mrp" 
+                      type="number" 
+                      value={formData.mrp} 
+                      onChange={(e) => setFormData({...formData, mrp: e.target.value})}
+                      className="rounded-none border-gray-300 focus:border-black"
+                      placeholder="2500"
+                    />
+                  </div>
+                  <div className="flex items-center pt-6">
+                    <input 
+                      type="checkbox" 
+                      id="featured" 
+                      checked={formData.featured}
+                      onChange={(e) => setFormData({...formData, featured: e.target.checked})}
+                      className="w-4 h-4 text-black focus:ring-black border-gray-300 rounded"
+                    />
+                    <Label htmlFor="featured" className="ml-2">Mark as Featured</Label>
                   </div>
                 </div>
 
+                {/* 3. Description */}
                 <div>
                   <Label htmlFor="description">Description</Label>
                   <Textarea 
                     id="description" 
+                    rows={4}
                     value={formData.description} 
                     onChange={(e) => setFormData({...formData, description: e.target.value})}
                     className="rounded-none border-gray-300 focus:border-black"
                   />
                 </div>
+                
+                {/* 4. Variants Section */}
+                <VariantEditor variants={formData.variants} setVariants={(v) => setFormData({...formData, variants: v})} />
 
+                {/* 5. Images Section */}
                 <div>
                   <Label>Images</Label>
-                  <div className="grid grid-cols-4 gap-2 mb-4 mt-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2 mb-4 mt-2">
                     {formData.images.map((img, i) => (
-                      <div key={i} className="relative group">
-                        <img src={img.url} alt="" className="w-full h-20 object-cover border border-gray-200" />
+                      <div key={i} className="relative group aspect-square">
+                        <img src={img.url} alt="" className="w-full h-full object-cover border border-gray-200" />
                         <button 
                           onClick={() => setFormData(prev => ({...prev, images: prev.images.filter((_, idx) => idx !== i)}))}
                           className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
@@ -211,23 +377,12 @@ const AdminProducts = () => {
                   <FileUpload 
                     onUpload={handleImageUpload} 
                     multiple={true} 
-                    label="Add Images"
+                    label={`Add Image(s) (${formData.images.length} uploaded)`}
                   />
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <input 
-                    type="checkbox" 
-                    id="featured" 
-                    checked={formData.featured}
-                    onChange={(e) => setFormData({...formData, featured: e.target.checked})}
-                    className="w-4 h-4 text-black focus:ring-black border-gray-300 rounded"
-                  />
-                  <Label htmlFor="featured">Featured Product</Label>
                 </div>
 
                 <Button onClick={handleSaveProduct} className="w-full bg-black text-white hover:bg-gray-800 rounded-none py-6">
-                  Save Product
+                  {editingProduct ? 'Update Product' : 'Create Product'}
                 </Button>
               </div>
             </DialogContent>
@@ -246,7 +401,8 @@ const AdminProducts = () => {
                   <tr className="bg-gray-50 border-b border-gray-200">
                     <th className="text-left py-4 px-6 font-semibold text-gray-900 uppercase tracking-wider text-sm">Image</th>
                     <th className="text-left py-4 px-6 font-semibold text-gray-900 uppercase tracking-wider text-sm">Name</th>
-                    <th className="text-left py-4 px-6 font-semibold text-gray-900 uppercase tracking-wider text-sm">Price</th>
+                    <th className="text-left py-4 px-6 font-semibold text-gray-900 uppercase tracking-wider text-sm">MRP</th> 
+                    <th className="text-left py-4 px-6 font-semibold text-gray-900 uppercase tracking-wider text-sm">Sale Price</th> 
                     <th className="text-left py-4 px-6 font-semibold text-gray-900 uppercase tracking-wider text-sm">Variants</th>
                     <th className="text-right py-4 px-6 font-semibold text-gray-900 uppercase tracking-wider text-sm">Actions</th>
                   </tr>
@@ -267,7 +423,12 @@ const AdminProducts = () => {
                         />
                       </td>
                       <td className="py-4 px-6 font-medium text-black">{product.name}</td>
-                      <td className="py-4 px-6 text-black">₹{product.price}</td>
+                      <td className="py-4 px-6 text-gray-600">
+                        {product.mrp ? `₹${product.mrp.toFixed(2)}` : '-'}
+                      </td>
+                      <td className="py-4 px-6 font-semibold text-black">
+                        ₹{product.price.toFixed(2)}
+                      </td>
                       <td className="py-4 px-6 text-gray-600">{product.variants.length} variants</td>
                       <td className="py-4 px-6 text-right">
                         <div className="flex items-center justify-end gap-2">

@@ -26,6 +26,7 @@ import AdminOrders from './pages/admin/AdminOrders';
 import AdminInventory from './pages/admin/AdminInventory';
 import AdminAnalytics from './pages/admin/AdminAnalytics';
 import AdminLandingPage from './pages/admin/AdminLandingPage';
+import AdminCoupons from './pages/admin/AdminCoupons'; // NEW: Coupon Page
 
 // Components
 import Navbar from './components/Navbar';
@@ -80,6 +81,7 @@ function App() {
                       <Route path="inventory" element={<AdminInventory />} />
                       <Route path="analytics" element={<AdminAnalytics />} />
                       <Route path="landing-page" element={<AdminLandingPage />} />
+                      <Route path="coupons" element={<AdminCoupons />} /> {/* NEW ROUTE */}
                       {/* Catch-all for /admin/* */}
                       <Route path="*" element={<Navigate to="/admin" />} />
                     </Route>

@@ -17,7 +17,15 @@ export const validateImageFile = (file) => {
 };
 
 export const validateVideoFile = (file) => {
-  const validTypes = ['video/mp4', 'video/webm', 'video/ogg'];
+  const validTypes = [
+    'video/mp4', 
+    'video/webm', 
+    'video/ogg', 
+    'video/quicktime',  // Added for iOS MOV files
+    'video/3gpp',       // Added for mobile formats
+    'video/3gpp2',      // Added for mobile formats
+    'video/x-m4v'       // Added for some Apple devices
+  ];
   return validTypes.includes(file.type);
 };
 

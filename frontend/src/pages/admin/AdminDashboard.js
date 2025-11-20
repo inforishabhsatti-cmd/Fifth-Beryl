@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ShoppingBag, Package, TrendingUp, BarChart3, ShoppingCart } from 'lucide-react';
+import { ShoppingBag, Package, TrendingUp, BarChart3, ShoppingCart, Percent } from 'lucide-react'; // ADDED: Percent icon
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 import { useAuth } from '../../context/AuthContext';
@@ -53,6 +53,8 @@ const AdminDashboard = () => {
     { icon: <Package size={24} />, title: 'Products', description: 'Manage products', link: '/admin/products' },
     { icon: <ShoppingCart size={24} />, title: 'Orders', description: 'View & manage orders', link: '/admin/orders' },
     { icon: <ShoppingBag size={24} />, title: 'Inventory', description: 'Track stock levels', link: '/admin/inventory' },
+    // ADDED: Coupon Management Link
+    { icon: <Percent size={24} />, title: 'Coupons', description: 'Create discount codes', link: '/admin/coupons' }, 
     { icon: <BarChart3 size={24} />, title: 'Analytics', description: 'Sales & reports', link: '/admin/analytics' },
     { icon: <TrendingUp size={24} />, title: 'Landing Page', description: 'Customize homepage', link: '/admin/landing-page' }
   ];

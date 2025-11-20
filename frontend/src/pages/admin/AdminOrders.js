@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Package, Truck, CheckCircle, XCircle } from 'lucide-react';
+import { ArrowLeft, Package, Truck, CheckCircle, XCircle, DollarSign } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
@@ -55,9 +55,19 @@ const AdminOrders = () => {
       default: return <Package className="text-gray-400" size={20} />;
     }
   };
+  
+  const formatAddress = (addr) => {
+      const parts = [
+          addr.address_line1,
+          addr.address_line2,
+          `${addr.city} ${addr.postal_code}`,
+          `${addr.state}, ${addr.country}`,
+      ].filter(p => p && p.trim() && p.trim() !== ','); // Filter out empty strings/optional lines
+      return parts.join(', ');
+  }
 
   return (
-    <div className="min-h-screen bg-white pt-24"> {/* FIX: Added pt-24 */}
+    <div className="min-h-screen bg-white pt-24">
       <Navbar />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -82,8 +92,8 @@ const AdminOrders = () => {
                   <tr className="bg-gray-50 border-b border-gray-200">
                     <th className="text-left py-4 px-6 font-semibold text-gray-900 uppercase tracking-wider text-sm">Order ID</th>
                     <th className="text-left py-4 px-6 font-semibold text-gray-900 uppercase tracking-wider text-sm">Customer</th>
-                    <th className="text-left py-4 px-6 font-semibold text-gray-900 uppercase tracking-wider text-sm">Items</th>
-                    <th className="text-left py-4 px-6 font-semibold text-gray-900 uppercase tracking-wider text-sm">Total</th>
+                    <th className="text-left py-4 px-6 font-semibold text-gray-900 uppercase tracking-wider text-sm">Address & Phone</th>
+                    <th className="text-left py-4 px-6 font-semibold text-gray-900 uppercase tracking-wider text-sm">Total Paid</th>
                     <th className="text-left py-4 px-6 font-semibold text-gray-900 uppercase tracking-wider text-sm">Status</th>
                     <th className="text-left py-4 px-6 font-semibold text-gray-900 uppercase tracking-wider text-sm">Date</th>
                   </tr>
@@ -97,15 +107,31 @@ const AdminOrders = () => {
                       transition={{ delay: index * 0.05 }}
                       className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
                     >
-                      <td className="py-4 px-6 font-medium text-black">{order.id.substring(0, 8)}</td>
+                      <td className="py-4 px-6 font-medium text-black text-xs">{order.id.substring(0, 8)}</td>
                       <td className="py-4 px-6 text-gray-600">
-                        <div className="font-medium text-black">{order.shipping_address.name}</div>
+                        <div className="font-medium text-black">{order.shipping_address.name || order.user_email}</div>
                         <div className="text-xs text-gray-500">{order.user_email}</div>
+                        {order.coupon_code && (
+                            <div className="text-xs text-green-600 font-medium mt-1">
+                                Coupon: {order.coupon_code}
+                            </div>
+                        )}
                       </td>
-                      <td className="py-4 px-6 text-gray-600">
-                        {order.items.length} items
+                      {/* ADDED: Full Address Display */}
+                      <td className="py-4 px-6 text-gray-600 text-sm max-w-xs">
+                          <div className="text-black font-medium">{order.shipping_address.phone}</div>
+                          <div className="text-xs">{formatAddress(order.shipping_address)}</div>
                       </td>
-                      <td className="py-4 px-6 font-bold text-black">₹{order.total_amount}</td>
+                      <td className="py-4 px-6">
+                        <div className="font-bold text-black">
+                            ₹{order.final_amount ? order.final_amount.toFixed(2) : order.total_amount.toFixed(2)}
+                        </div>
+                        {order.discount_amount > 0 && (
+                            <div className="text-xs text-red-500 flex items-center">
+                                (- ₹{order.discount_amount.toFixed(2)})
+                            </div>
+                        )}
+                      </td>
                       <td className="py-4 px-6">
                         <div className="flex items-center gap-2">
                           {getStatusIcon(order.status)}

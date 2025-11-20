@@ -109,14 +109,23 @@ const ProductCard = ({ product, index }) => {
         
         {/* Content */}
         <div className="p-4">
-          <h3 className="text-lg font-medium mb-1 playfair text-black group-hover:underline decoration-1 underline-offset-4 decoration-black">
+          <h3 className="text-lg font-medium mb-1 playfair text-black">
             {product.name}
           </h3>
           
           <div className="flex items-center justify-between mt-2">
-            <span className="text-lg font-semibold text-black">
-              ₹{product.price}
-            </span>
+            <div className="flex items-baseline gap-2">
+              {/* ADDED: Display MRP if it exists and is higher than sale price */}
+              {product.mrp && product.mrp > product.price && (
+                <span className="text-sm text-gray-500 line-through">
+                  ₹{product.mrp.toFixed(2)}
+                </span>
+              )}
+              {/* Sale Price */}
+              <span className="text-lg font-semibold text-black">
+                ₹{product.price.toFixed(2)}
+              </span>
+            </div>
             
             {/* Color Swatches */}
             <div className="flex gap-1.5">

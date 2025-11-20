@@ -145,6 +145,7 @@ class Product(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
     description: str
+    mrp: Optional[float] = None # ADDED: Maximum Retail Price (MRP)
     price: float
     images: List[ProductImage]
     variants: List[ProductVariant]
@@ -161,11 +162,43 @@ class PaginatedProducts(BaseModel):
 class ProductCreate(BaseModel):
     name: str
     description: str
+    mrp: Optional[float] = None # ADDED: Maximum Retail Price (MRP)
     price: float
     images: List[ProductImage]
     variants: List[ProductVariant]
     category: str = "shirts"
     featured: bool = False
+    
+# NEW MODELS: Coupon Management
+class Coupon(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    code: str
+    discount_type: str = Field(..., pattern="^(fixed|percentage)$") # "fixed" or "percentage"
+    discount_value: float
+    min_purchase: float = 0.0
+    expiry_date: Optional[str] = None
+    is_active: bool = True
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    
+class CouponCreate(BaseModel):
+    code: str
+    discount_type: str = Field(..., pattern="^(fixed|percentage)$")
+    discount_value: float
+    min_purchase: float = 0.0
+    expiry_date: Optional[str] = None
+
+class CouponValidation(BaseModel):
+    code: str
+    total_amount: float
+    
+class CouponResponse(BaseModel):
+    code: str
+    discount_type: str
+    discount_value: float
+    discount_amount: float
+    new_total: float
+    message: str
 
 class Review(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -208,6 +241,9 @@ class Order(BaseModel):
     items: List[OrderItem]
     shipping_address: ShippingAddress
     total_amount: float
+    discount_amount: float = 0.0 # ADDED
+    final_amount: float = Field(..., description="Total amount after discount") # ADDED
+    coupon_code: Optional[str] = None # ADDED
     payment_id: Optional[str] = None
     razorpay_order_id: Optional[str] = None
     status: str = "pending"
@@ -218,6 +254,7 @@ class OrderCreate(BaseModel):
     items: List[OrderItem]
     shipping_address: ShippingAddress
     total_amount: float
+    coupon_code: Optional[str] = None # ADDED
 
 class PaymentVerification(BaseModel):
     razorpay_order_id: str
@@ -275,6 +312,92 @@ class UserProfileUpdate(BaseModel):
 class WishlistUpdate(BaseModel):
     product_id: str
 # --- END MODELS ---
+
+
+# --- Coupon Helper Function ---
+async def apply_coupon_discount(total_amount: float, code: str):
+    coupon = await db.coupons.find_one({"code": code.upper()})
+    
+    if not coupon or not coupon.get('is_active', True):
+        return total_amount, 0.0, None, "Coupon not found or inactive"
+    
+    # Check expiry
+    expiry_date_str = coupon.get('expiry_date')
+    if expiry_date_str:
+        try:
+            expiry_date = datetime.fromisoformat(expiry_date_str)
+            if datetime.now(timezone.utc) > expiry_date:
+                return total_amount, 0.0, None, "Coupon expired"
+        except ValueError:
+            pass # Ignore invalid date format
+
+    # Check minimum purchase
+    min_purchase = coupon.get('min_purchase', 0.0)
+    if total_amount < min_purchase:
+        return total_amount, 0.0, None, f"Minimum purchase of ₹{min_purchase:.2f} required"
+
+    discount_type = coupon.get('discount_type', 'fixed')
+    discount_value = coupon.get('discount_value', 0.0)
+    
+    discount_amount = 0.0
+    
+    if discount_type == 'fixed':
+        discount_amount = discount_value
+    elif discount_type == 'percentage':
+        discount_amount = total_amount * (discount_value / 100.0)
+        
+    final_amount = max(0.0, total_amount - discount_amount)
+    
+    return final_amount, discount_amount, coupon, "Coupon applied successfully"
+
+
+# --- Coupon Routes ---
+coupon_router = APIRouter(prefix="/api/coupons")
+
+@coupon_router.post("/validate", response_model=CouponResponse)
+async def validate_coupon(data: CouponValidation):
+    total_amount = data.total_amount
+    code = data.code.upper()
+    
+    final_amount, discount_amount, coupon, message = await apply_coupon_discount(total_amount, code)
+
+    response_data = {
+        "code": code,
+        "discount_type": coupon.get('discount_type', 'fixed') if coupon else 'fixed',
+        "discount_value": coupon.get('discount_value', 0.0) if coupon else 0.0,
+        "discount_amount": discount_amount,
+        "new_total": final_amount,
+        "message": message
+    }
+    
+    if not coupon:
+        raise HTTPException(status_code=404, detail=message)
+        
+    return response_data
+    
+@coupon_router.post("/", response_model=Coupon)
+async def create_coupon(coupon: CouponCreate, user: dict = Depends(verify_admin)):
+    existing = await db.coupons.find_one({"code": coupon.code.upper()})
+    if existing:
+        raise HTTPException(status_code=400, detail="Coupon code already exists")
+    
+    coupon_obj = Coupon(**coupon.model_dump())
+    coupon_obj.code = coupon_obj.code.upper()
+    doc = coupon_obj.model_dump()
+    await db.coupons.insert_one(doc)
+    return coupon_obj
+
+@coupon_router.get("/", response_model=List[Coupon])
+async def get_all_coupons(user: dict = Depends(verify_admin)):
+    coupons = await db.coupons.find({}, {"_id": 0}).to_list(1000)
+    return coupons
+
+@coupon_router.delete("/{coupon_id}")
+async def delete_coupon(coupon_id: str, user: dict = Depends(verify_admin)):
+    result = await db.coupons.delete_one({"id": coupon_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Coupon not found")
+    return {"message": "Coupon deleted successfully"}
 
 
 # --- Auth Routes (Register, Login) ---
@@ -406,13 +529,37 @@ async def get_product_reviews(product_id: str):
 # --- Order Routes ---
 @api_router.post("/orders/create-razorpay-order")
 async def create_razorpay_order(order_data: OrderCreate, user: dict = Depends(get_current_user)): 
+    
+    total_amount = order_data.total_amount
+    final_amount = total_amount
+    discount_amount = 0.0
+    coupon_code = order_data.coupon_code
+    
+    # 1. Apply Coupon Discount if provided
+    if coupon_code:
+        final_amount, discount_amount, coupon, message = await apply_coupon_discount(total_amount, coupon_code)
+        if not coupon:
+            # If coupon is invalid, proceed without it, but log a warning or send a toast on frontend
+            coupon_code = None 
+            discount_amount = 0.0
+            final_amount = total_amount
+    
+    # Ensure final amount is not negative
+    final_amount = max(0.0, final_amount)
+    
     order_obj = Order(
         **order_data.model_dump(),
         user_id=user['_id'],
-        user_email=user.get('email', '')
+        user_email=user.get('email', ''),
+        total_amount=total_amount, # Original total
+        discount_amount=discount_amount, # Applied discount
+        final_amount=final_amount, # Final amount to be paid
+        coupon_code=coupon_code # Used coupon code
     )
+    
+    # Razorpay amount must be in paise (final_amount)
     razorpay_order = razorpay_client.order.create({
-        "amount": int(order_data.total_amount * 100),
+        "amount": int(final_amount * 100),
         "currency": "INR",
         "payment_capture": 1
     })
@@ -423,8 +570,7 @@ async def create_razorpay_order(order_data: OrderCreate, user: dict = Depends(ge
         "order_id": order_obj.id,
         "razorpay_order_id": razorpay_order['id'],
         "amount": razorpay_order['amount'],
-       # CORRECT
-"currency": razorpay_order['currency'] 
+        "currency": razorpay_order['currency'] 
     }
 
 @api_router.post("/orders/verify-payment")
@@ -493,7 +639,7 @@ async def get_dashboard_analytics(user: dict = Depends(verify_admin)):
     total_revenue = 0
     orders = await db.orders.find({"status": {"$in": ["processing", "shipped", "delivered"]}}, {"_id": 0}).to_list(10000)
     for order in orders:
-        total_revenue += order.get('total_amount', 0)
+        total_revenue += order.get('final_amount', 0) # Use final_amount for revenue
     total_products = await db.products.count_documents({})
     recent_orders = await db.orders.find({}, {"_id": 0}).sort("created_at", -1).limit(10).to_list(10)
     status_counts = {}
@@ -626,6 +772,7 @@ app.add_middleware(
 # Include the routers
 app.include_router(api_router)
 app.include_router(auth_router)
+app.include_router(coupon_router) # ADDED: Coupon Router
 
 
 logging.basicConfig(
