@@ -29,7 +29,7 @@ const AdminInventory = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white pt-24"> {/* FIX: Added pt-24 to clear navbar */}
+    <div className="min-h-screen bg-white pt-24">
       <Navbar />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -101,8 +101,6 @@ const AdminInventory = () => {
           </div>
         )}
       </div>
-
-      <Footer />
     </div>
   );
 };

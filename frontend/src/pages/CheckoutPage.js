@@ -237,7 +237,6 @@ const CheckoutPage = () => {
             Sign In / Register
           </Button>
         </div>
-        <Footer />
       </div>
     );
   }
@@ -252,7 +251,6 @@ const CheckoutPage = () => {
             Continue Shopping
           </Button>
         </div>
-        <Footer />
       </div>
     );
   }
@@ -492,8 +490,6 @@ const CheckoutPage = () => {
           </div>
         </div>
       </div>
-
-      <Footer />
     </div>
   );
 };

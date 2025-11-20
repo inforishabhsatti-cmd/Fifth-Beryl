@@ -145,7 +145,7 @@ class Product(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
     description: str
-    mrp: Optional[float] = None # ADDED: Maximum Retail Price (MRP)
+    mrp: Optional[float] = None
     price: float
     images: List[ProductImage]
     variants: List[ProductVariant]
@@ -162,7 +162,7 @@ class PaginatedProducts(BaseModel):
 class ProductCreate(BaseModel):
     name: str
     description: str
-    mrp: Optional[float] = None # ADDED: Maximum Retail Price (MRP)
+    mrp: Optional[float] = None
     price: float
     images: List[ProductImage]
     variants: List[ProductVariant]
@@ -241,9 +241,9 @@ class Order(BaseModel):
     items: List[OrderItem]
     shipping_address: ShippingAddress
     total_amount: float
-    discount_amount: float = 0.0 # ADDED
-    final_amount: float = Field(..., description="Total amount after discount") # ADDED
-    coupon_code: Optional[str] = None # ADDED
+    discount_amount: float = 0.0
+    final_amount: float = Field(..., description="Total amount after discount")
+    coupon_code: Optional[str] = None
     payment_id: Optional[str] = None
     razorpay_order_id: Optional[str] = None
     status: str = "pending"
@@ -254,7 +254,7 @@ class OrderCreate(BaseModel):
     items: List[OrderItem]
     shipping_address: ShippingAddress
     total_amount: float
-    coupon_code: Optional[str] = None # ADDED
+    coupon_code: Optional[str] = None
 
 class PaymentVerification(BaseModel):
     razorpay_order_id: str
@@ -311,6 +311,19 @@ class UserProfileUpdate(BaseModel):
 
 class WishlistUpdate(BaseModel):
     product_id: str
+    
+# NEW MODEL: Ticker Settings
+class TickerSettings(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = "ticker_settings"
+    text: str = "Free Shipping on all orders above ₹999! | Use code: WELCOME10 for 10% off."
+    is_active: bool = True
+    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    
+class TickerUpdate(BaseModel):
+    text: Optional[str] = None
+    is_active: Optional[bool] = None
+
 # --- END MODELS ---
 
 
@@ -351,9 +364,34 @@ async def apply_coupon_discount(total_amount: float, code: str):
     return final_amount, discount_amount, coupon, "Coupon applied successfully"
 
 
+# --- Ticker Routes ---
+ticker_router = APIRouter(prefix="/api/ticker")
+
+@ticker_router.get("/", response_model=TickerSettings)
+async def get_ticker_settings():
+    settings = await db.ticker_settings.find_one({"id": "ticker_settings"}, {"_id": 0})
+    if not settings:
+        default_settings = TickerSettings()
+        await db.ticker_settings.insert_one(default_settings.model_dump())
+        return default_settings.model_dump()
+    return settings
+
+@ticker_router.put("/", response_model=TickerSettings)
+async def update_ticker_settings(settings: TickerUpdate, user: dict = Depends(verify_admin)):
+    update_data = {k: v for k, v in settings.model_dump().items() if v is not None}
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.ticker_settings.update_one(
+        {"id": "ticker_settings"},
+        {"$set": update_data},
+        upsert=True
+    )
+    updated_settings = await db.ticker_settings.find_one({"id": "ticker_settings"}, {"_id": 0})
+    return updated_settings
+
+
 # --- Coupon Routes ---
 coupon_router = APIRouter(prefix="/api/coupons")
-
+# ... (rest of coupon routes remain unchanged)
 @coupon_router.post("/validate", response_model=CouponResponse)
 async def validate_coupon(data: CouponValidation):
     total_amount = data.total_amount
@@ -403,6 +441,7 @@ async def delete_coupon(coupon_id: str, user: dict = Depends(verify_admin)):
 # --- Auth Routes (Register, Login) ---
 
 auth_router = APIRouter(prefix="/api/auth")
+# ... (rest of auth routes remain unchanged)
 
 @auth_router.post("/register", response_model=UserProfile)
 async def register_user(user: UserCreate):
@@ -436,8 +475,6 @@ async def login_for_access_token(form_data: UserLogin):
         )
     access_token = create_access_token(data={"sub": user["_id"]})
     return {"access_token": access_token, "token_type": "bearer"}
-
-# Removed: /google/login and /google/callback endpoints
 
 # --- END AUTH ROUTES ---
 
@@ -539,7 +576,7 @@ async def create_razorpay_order(order_data: OrderCreate, user: dict = Depends(ge
     if coupon_code:
         final_amount, discount_amount, coupon, message = await apply_coupon_discount(total_amount, coupon_code)
         if not coupon:
-            # If coupon is invalid, proceed without it, but log a warning or send a toast on frontend
+            # If coupon is invalid, proceed without it
             coupon_code = None 
             discount_amount = 0.0
             final_amount = total_amount
@@ -639,7 +676,7 @@ async def get_dashboard_analytics(user: dict = Depends(verify_admin)):
     total_revenue = 0
     orders = await db.orders.find({"status": {"$in": ["processing", "shipped", "delivered"]}}, {"_id": 0}).to_list(10000)
     for order in orders:
-        total_revenue += order.get('final_amount', 0) # Use final_amount for revenue
+        total_revenue += order.get('final_amount', 0)
     total_products = await db.products.count_documents({})
     recent_orders = await db.orders.find({}, {"_id": 0}).sort("created_at", -1).limit(10).to_list(10)
     status_counts = {}
@@ -772,7 +809,8 @@ app.add_middleware(
 # Include the routers
 app.include_router(api_router)
 app.include_router(auth_router)
-app.include_router(coupon_router) # ADDED: Coupon Router
+app.include_router(coupon_router)
+app.include_router(ticker_router) # ADDED: Ticker Router
 
 
 logging.basicConfig(

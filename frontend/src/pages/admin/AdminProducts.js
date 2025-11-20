@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Edit, Trash2, ArrowLeft, X, LayoutGrid } from 'lucide-react'; // ADDED: LayoutGrid for variants
+import { Plus, Edit, Trash2, ArrowLeft, X, LayoutGrid } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
@@ -448,8 +448,6 @@ const AdminProducts = () => {
           </div>
         )}
       </div>
-
-      <Footer />
     </div>
   );
 };

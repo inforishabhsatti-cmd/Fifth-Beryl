@@ -11,7 +11,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 const COLORS = ['#000000', '#333333', '#666666', '#999999', '#CCCCCC'];
 
 const AdminAnalytics = () => {
-  const { api } = useAuth(); // Use 'api' instead of 'token'
+  const { api } = useAuth();
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -38,11 +38,12 @@ const AdminAnalytics = () => {
 
   const revenueData = analytics?.recent_orders.slice(0, 10).reverse().map((order, index) => ({
     name: `Order ${index + 1}`,
-    amount: order.total_amount
+    // NOTE: Changed to final_amount if it exists, otherwise it defaults to total_amount
+    amount: order.final_amount || order.total_amount 
   })) || [];
 
   return (
-    <div className="min-h-screen bg-white pt-24"> {/* FIX: Added pt-24 */}
+    <div className="min-h-screen bg-white pt-24">
       <Navbar />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -172,7 +173,10 @@ const AdminAnalytics = () => {
                       <tr key={order.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors" data-testid={`order-row-${index}`}>
                         <td className="py-3 px-4 text-gray-600">{order.id.substring(0, 8)}</td>
                         <td className="py-3 px-4 text-gray-600">{order.user_email}</td>
-                        <td className="py-3 px-4 font-semibold text-black">₹{order.total_amount}</td>
+                        <td className="py-3 px-4 font-semibold text-black">
+                            {/* Use final_amount if available, otherwise total_amount */}
+                            ₹{order.final_amount !== undefined ? order.final_amount.toFixed(2) : order.total_amount.toFixed(2)}
+                        </td>
                         <td className="py-3 px-4">
                           <span className="px-3 py-1 text-xs font-bold border border-black text-black uppercase tracking-wide">
                             {order.status}
@@ -188,8 +192,6 @@ const AdminAnalytics = () => {
           </div>
         )}
       </div>
-
-      <Footer />
     </div>
   );
 };

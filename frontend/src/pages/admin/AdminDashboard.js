@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ShoppingBag, Package, TrendingUp, BarChart3, ShoppingCart, Percent } from 'lucide-react'; // ADDED: Percent icon
+import { ShoppingBag, Package, TrendingUp, BarChart3, ShoppingCart, Percent, Zap } from 'lucide-react'; 
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '@/components/ui/button';
 
 const AdminDashboard = () => {
-  const { currentUser: user, api } = useAuth(); // Uses the 'api' object from context
+  const { currentUser: user, api } = useAuth();
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -23,7 +23,6 @@ const AdminDashboard = () => {
 
   const fetchAnalytics = async () => {
     try {
-      // Uses the 'api' object which handles the token automatically
       const response = await api.get('/analytics/dashboard');
       setAnalytics(response.data);
     } catch (error) {
@@ -44,7 +43,6 @@ const AdminDashboard = () => {
             Sign In
           </Button>
         </div>
-        <Footer />
       </div>
     );
   }
@@ -53,14 +51,14 @@ const AdminDashboard = () => {
     { icon: <Package size={24} />, title: 'Products', description: 'Manage products', link: '/admin/products' },
     { icon: <ShoppingCart size={24} />, title: 'Orders', description: 'View & manage orders', link: '/admin/orders' },
     { icon: <ShoppingBag size={24} />, title: 'Inventory', description: 'Track stock levels', link: '/admin/inventory' },
-    // ADDED: Coupon Management Link
     { icon: <Percent size={24} />, title: 'Coupons', description: 'Create discount codes', link: '/admin/coupons' }, 
     { icon: <BarChart3 size={24} />, title: 'Analytics', description: 'Sales & reports', link: '/admin/analytics' },
+    { icon: <Zap size={24} />, title: 'Running Label', description: 'Edit scrolling text', link: '/admin/ticker' },
     { icon: <TrendingUp size={24} />, title: 'Landing Page', description: 'Customize homepage', link: '/admin/landing-page' }
   ];
 
   return (
-    <div className="min-h-screen bg-white pt-24"> {/* Added pt-24 to prevent navbar overlap */}
+    <div className="min-h-screen bg-white pt-24">
       <Navbar />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -174,8 +172,6 @@ const AdminDashboard = () => {
           ))}
         </div>
       </div>
-
-      <Footer />
     </div>
   );
 };

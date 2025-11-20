@@ -203,3 +203,34 @@
     width: 90%;
     max-width: 500px;
 }
+
+/* Add this Marquee CSS to frontend/src/App.css */
+
+/* Container ensures overflow is hidden */
+.ticker-container {
+  position: relative;
+  overflow: hidden;
+  height: 2rem; 
+  line-height: 2rem;
+}
+
+/* Content wrapper that scrolls */
+.ticker-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 200%; /* Double width for seamless loop */
+  height: 100%;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  animation: marquee 15s linear infinite;
+  padding-left: 100%; /* Start the text off-screen */
+  box-sizing: border-box;
+}
+
+/* Keyframes for the scrolling animation */
+@keyframes marquee {
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-50%, 0, 0); } /* Scrolls exactly halfway (100% of original content width) */
+}

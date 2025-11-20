@@ -124,6 +124,7 @@ const AdminOrders = () => {
                       </td>
                       <td className="py-4 px-6">
                         <div className="font-bold text-black">
+                            {/* Display final_amount (amount paid after discount) */}
                             ₹{order.final_amount ? order.final_amount.toFixed(2) : order.total_amount.toFixed(2)}
                         </div>
                         {order.discount_amount > 0 && (
@@ -161,7 +162,6 @@ const AdminOrders = () => {
           </div>
         )}
       </div>
-      <Footer />
     </div>
   );
 };

@@ -272,8 +272,6 @@ const AdminCoupons = () => {
           </div>
         )}
       </div>
-
-      <Footer />
     </div>
   );
 };
