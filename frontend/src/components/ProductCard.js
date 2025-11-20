@@ -108,31 +108,34 @@ const ProductCard = ({ product, index }) => {
         </div>
         
         {/* Content */}
-        <div className="p-4">
-          <h3 className="text-lg font-medium mb-1 playfair text-black">
+        {/* MODIFIED: Reduced padding on small screens (p-4 -> p-3) */}
+        <div className="p-3 sm:p-4"> 
+          {/* MODIFIED: Reduced font size for mobile (text-lg -> text-base) */}
+          <h3 className="text-base sm:text-lg font-medium mb-1 playfair text-black group-hover:underline decoration-1 underline-offset-4 decoration-black">
             {product.name}
           </h3>
           
           <div className="flex items-center justify-between mt-2">
             <div className="flex items-baseline gap-2">
-              {/* ADDED: Display MRP if it exists and is higher than sale price */}
+              {/* MRP Display */}
               {product.mrp && product.mrp > product.price && (
-                <span className="text-sm text-gray-500 line-through">
+                <span className="text-xs text-gray-500 line-through">
                   ₹{product.mrp.toFixed(2)}
                 </span>
               )}
-              {/* Sale Price */}
-              <span className="text-lg font-semibold text-black">
+              {/* MODIFIED: Reduced font size for sale price (text-lg -> text-base) */}
+              <span className="text-base sm:text-lg font-semibold text-black">
                 ₹{product.price.toFixed(2)}
               </span>
             </div>
             
             {/* Color Swatches */}
+            {/* MODIFIED: Reduced swatch size (w-4 h-4 -> w-3 h-3) */}
             <div className="flex gap-1.5">
               {product.variants?.slice(0, 3).map((variant, i) => (
                 <div
                   key={i}
-                  className="w-4 h-4 rounded-full border border-gray-200 shadow-sm"
+                  className="w-3 h-3 rounded-full border border-gray-200 shadow-sm"
                   style={{ backgroundColor: variant.color_code }}
                   title={variant.color}
                 />

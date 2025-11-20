@@ -1,64 +1,75 @@
 import { Link } from 'react-router-dom';
-import { Instagram, Facebook, Twitter, Mail } from 'lucide-react';
+import { Instagram, Facebook, Twitter, Mail, ChevronDown } from 'lucide-react'; // Added ChevronDown for collapsibles
 
 const Footer = () => {
+  // Helper to render collapsible sections on mobile
+  const CollapsibleSection = ({ title, children }) => (
+    <details className="md:contents border-b border-gray-800 md:border-none last:border-b-0">
+      <summary className="font-semibold text-lg py-4 md:py-0 uppercase tracking-wide cursor-pointer md:cursor-default list-none flex justify-between items-center md:block">
+        {title}
+        <ChevronDown size={18} className="md:hidden transition-transform duration-300 details-open:rotate-180" />
+      </summary>
+      <div className="md:mt-4 pb-4 md:pb-0 text-gray-400 text-base md:text-left">
+        {children}
+      </div>
+    </details>
+  );
+
   return (
     <footer className="bg-black text-white py-12 border-t border-gray-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Mobile: Stacked layout, centered text. Desktop: Grid layout (4 cols) */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 text-center md:text-left">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-y-0 gap-x-8 md:gap-y-8 md:text-left">
           
-          {/* Brand Section */}
-          <div className="flex flex-col items-center md:items-start">
-            <h3 className="text-2xl font-bold playfair mb-4">Fifth Beryl</h3>
-            <p className="text-gray-400 mb-4 max-w-xs mx-auto md:mx-0">
+          {/* Brand Section (Always visible, centralized on mobile) */}
+          <div className="flex flex-col items-center md:items-start text-center md:text-left mb-8 md:mb-0">
+            <h3 className="text-3xl font-bold playfair mb-4">Fifth Beryl</h3>
+            <p className="text-gray-400 mb-6 max-w-xs mx-auto md:mx-0 text-sm">
               Premium quality shirts crafted with excellence.
             </p>
-            <div className="flex gap-6 justify-center md:justify-start">
+            <div className="flex gap-4 justify-center md:justify-start">
               <a href="#" className="hover:text-gray-300 transition-colors" aria-label="Instagram">
-                <Instagram size={24} />
+                <Instagram size={20} />
               </a>
               <a href="#" className="hover:text-gray-300 transition-colors" aria-label="Facebook">
-                <Facebook size={24} />
+                <Facebook size={20} />
               </a>
               <a href="#" className="hover:text-gray-300 transition-colors" aria-label="Twitter">
-                <Twitter size={24} />
+                <Twitter size={20} />
               </a>
               <a href="#" className="hover:text-gray-300 transition-colors" aria-label="Email">
-                <Mail size={24} />
+                <Mail size={20} />
               </a>
             </div>
           </div>
 
-          {/* Quick Links */}
-          <div className="flex flex-col items-center md:items-start">
-            <h4 className="font-semibold text-lg mb-4 uppercase tracking-wide">Quick Links</h4>
-            <ul className="space-y-3 text-gray-400">
+          {/* Quick Links (Collapsible on Mobile) */}
+          <CollapsibleSection title="Quick Links">
+            <ul className="space-y-3">
               <li>
-                <Link to="/" className="hover:text-white transition-colors text-base">Home</Link>
+                <Link to="/" className="hover:text-white transition-colors">Home</Link>
               </li>
               <li>
-                <Link to="/products" className="hover:text-white transition-colors text-base">Products</Link>
+                <Link to="/products" className="hover:text-white transition-colors">Products</Link>
               </li>
               <li>
-                <Link to="/orders" className="hover:text-white transition-colors text-base">Orders</Link>
+                <Link to="/orders" className="hover:text-white transition-colors">Orders</Link>
               </li>
             </ul>
-          </div>
+          </CollapsibleSection>
 
-          {/* Customer Service */}
-          <div className="flex flex-col items-center md:items-start">
-            <h4 className="font-semibold text-lg mb-4 uppercase tracking-wide">Customer Service</h4>
-            <ul className="space-y-3 text-gray-400">
-              <li><a href="#" className="hover:text-white transition-colors text-base">Contact Us</a></li>
-              <li><a href="#" className="hover:text-white transition-colors text-base">Shipping Policy</a></li>
-              <li><a href="#" className="hover:text-white transition-colors text-base">Returns & Exchanges</a></li>
-              <li><a href="#" className="hover:text-white transition-colors text-base">FAQs</a></li>
+          {/* Customer Service (Collapsible on Mobile) */}
+          <CollapsibleSection title="Customer Service">
+            <ul className="space-y-3">
+              <li><a href="#" className="hover:text-white transition-colors">Contact Us</a></li>
+              <li><a href="#" className="hover:text-white transition-colors">Shipping Policy</a></li>
+              <li><a href="#" className="hover:text-white transition-colors">Returns & Exchanges</a></li>
+              <li><a href="#" className="hover:text-white transition-colors">FAQs</a></li>
             </ul>
-          </div>
+          </CollapsibleSection>
 
-          {/* Newsletter */}
-          <div className="flex flex-col items-center md:items-start">
+          {/* Newsletter (Always visible, stacked on mobile) */}
+          <div className="mt-8 md:mt-0 flex flex-col items-center md:items-start text-center md:text-left">
             <h4 className="font-semibold text-lg mb-4 uppercase tracking-wide">Newsletter</h4>
             <p className="text-gray-400 mb-4 text-sm max-w-xs mx-auto md:mx-0">
               Subscribe to get special offers and updates.
