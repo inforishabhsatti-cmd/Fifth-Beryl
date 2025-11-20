@@ -219,13 +219,13 @@
   position: absolute;
   top: 0;
   left: 0;
-  /* Keeping 200% width is correct for seamless loop, but doubling the padding below helps */
+  /* Keeping 200% width is correct for seamless loop */
   width: 200%; 
   height: 100%;
   display: flex;
   align-items: center;
   white-space: nowrap;
-  animation: marquee 10s linear infinite; /* DESKTOP SPEED: Set to 10s */
+  animation: marquee 10s linear infinite; /* DESKTOP SPEED: 10s */
   padding-left: 100%; /* Start the text off-screen */
   box-sizing: border-box;
 }
@@ -239,16 +239,9 @@
 /* MODIFIED: Speed up animation for mobile devices to be much faster */
 @media (max-width: 640px) { /* Targets Tailwind's 'sm' breakpoint and smaller */
   .ticker-content {
-    /* INCREASED SPEED: Change to 5s for mobile */
+    /* AGGRESSIVE SPEED INCREASE: 5s for mobile */
     animation-duration: 5s; 
-    /* Aggressively increase padding to fix looping issue on some mobile browsers */
-    padding-left: 150%; 
-  }
-  
-  /* NEW KEYFRAMES FOR MOBILE to match the 150% padding change */
-  @keyframes marquee {
-    0% { transform: translate3d(0, 0, 0); }
-    /* Mobile scroll needs to move (100% + 50% padding) / 200% width = 75% scroll */
-    100% { transform: translate3d(-75%, 0, 0); } 
+    /* REVERTED: Using standard padding is more robust for looping */
+    padding-left: 100%; 
   }
 }

@@ -33,8 +33,9 @@ const TickerLabel = ({ position }) => {
       return null;
   }
 
-  // Double the text for seamless looping marquee effect
-  const repeatedText = `${tickerText} \u2022 ${tickerText} \u2022 `;
+  // The scrolling effect requires the text to be duplicated for a seamless loop.
+  // Using clean separators (non-breaking space + bullet point) for minimal visual clutter.
+  const repeatedText = `${tickerText} \u00A0\u00A0\u2022\u00A0\u00A0 ${tickerText} \u00A0\u00A0\u2022\u00A0\u00A0 `; 
   
   const isTop = position === 'top';
 
@@ -42,7 +43,6 @@ const TickerLabel = ({ position }) => {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      // Fixed position, top: 0, z-50 to guarantee visibility over Navbar
       className={`ticker-container ${isTop ? 'bg-black text-white' : 'bg-black text-white'} z-50`} 
       style={{ 
         position: isTop ? 'fixed' : 'relative', 
