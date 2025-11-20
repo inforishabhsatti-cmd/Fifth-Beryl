@@ -3,14 +3,16 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
+// Footer import kept, but usage removed below
+import Footer from '../components/Footer'; 
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { DollarSign } from 'lucide-react';
+// CHANGED: Imported IndianRupee icon
+import { IndianRupee } from 'lucide-react'; 
 
 const CheckoutPage = () => {
   const navigate = useNavigate();
@@ -21,7 +23,7 @@ const CheckoutPage = () => {
   const [loading, setLoading] = useState(false); 
   const [dataLoading, setDataLoading] = useState(true); 
   
-  // NEW COUPON STATES
+  // COUPON STATES
   const [couponCode, setCouponCode] = useState('');
   const [discount, setDiscount] = useState({ 
     amount: 0.0, 
@@ -50,7 +52,6 @@ const CheckoutPage = () => {
   // Recalculate discount if cartTotal changes (e.g., if a percentage coupon is applied)
   useEffect(() => {
     if (discount.code && discount.isValid) {
-        // We ensure we re-validate the coupon if cartTotal changes, using the currently applied code
         handleApplyCoupon(discount.code); 
     }
   }, [cartTotal]); 
@@ -463,7 +464,7 @@ const CheckoutPage = () => {
                   {discount.amount > 0 && (
                      <div className="flex justify-between mb-2 text-sm text-green-600 font-semibold border-b border-gray-200 pb-2">
                         <span className='flex items-center'>
-                            <DollarSign size={14} className='mr-1' /> Discount
+                            <IndianRupee size={14} className='mr-1' /> Discount {/* CHANGED ICON */}
                         </span>
                         <span>- ₹{discount.amount.toFixed(2)}</span>
                      </div>

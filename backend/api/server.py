@@ -1,5 +1,6 @@
 # backend/api/server.py
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Header, UploadFile, File, Request, Query
+import re
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials, OAuth2PasswordBearer
 from fastapi.responses import RedirectResponse
 from dotenv import load_dotenv
@@ -87,6 +88,15 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
+def generate_slug(name: str) -> str:
+    """Generates a URL-friendly slug from the product name."""
+    name = name.lower()
+    # Remove non-alphanumeric characters (except spaces and hyphens)
+    name = re.sub(r'[^a-z0-9\s-]', '', name).strip()
+    # Replace spaces with hyphens
+    name = re.sub(r'[\s]+', '-', name)
+    return name
+
 # --- END HELPERS ---
 
 
@@ -147,6 +157,7 @@ class Product(BaseModel):
     description: str
     mrp: Optional[float] = None
     price: float
+    slug: str # ADDED: URL-friendly slug
     images: List[ProductImage]
     variants: List[ProductVariant]
     category: str = "shirts"
@@ -323,6 +334,9 @@ class TickerSettings(BaseModel):
 class TickerUpdate(BaseModel):
     text: Optional[str] = None
     is_active: Optional[bool] = None
+    
+class CleanupRequest(BaseModel):
+    collections: List[str] = Field(..., description="List of collection names to clear.")
 
 # --- END MODELS ---
 
@@ -391,7 +405,7 @@ async def update_ticker_settings(settings: TickerUpdate, user: dict = Depends(ve
 
 # --- Coupon Routes ---
 coupon_router = APIRouter(prefix="/api/coupons")
-# ... (rest of coupon routes remain unchanged)
+
 @coupon_router.post("/validate", response_model=CouponResponse)
 async def validate_coupon(data: CouponValidation):
     total_amount = data.total_amount
@@ -441,7 +455,6 @@ async def delete_coupon(coupon_id: str, user: dict = Depends(verify_admin)):
 # --- Auth Routes (Register, Login) ---
 
 auth_router = APIRouter(prefix="/api/auth")
-# ... (rest of auth routes remain unchanged)
 
 @auth_router.post("/register", response_model=UserProfile)
 async def register_user(user: UserCreate):
@@ -476,13 +489,17 @@ async def login_for_access_token(form_data: UserLogin):
     access_token = create_access_token(data={"sub": user["_id"]})
     return {"access_token": access_token, "token_type": "bearer"}
 
+# Removed: /google/login and /google/callback endpoints
+
 # --- END AUTH ROUTES ---
 
 
 # --- Product Routes ---
 @api_router.post("/products", response_model=Product)
 async def create_product(product: ProductCreate, user: dict = Depends(verify_admin)): 
-    product_obj = Product(**product.model_dump())
+    product_dict = product.model_dump()
+    product_dict['slug'] = generate_slug(product_dict['name']) # ADDED: Generate slug
+    product_obj = Product(**product_dict)
     doc = product_obj.model_dump()
     await db.products.insert_one(doc)
     return product_obj
@@ -522,11 +539,15 @@ async def get_featured_products():
     products = await db.products.find({"featured": True}, {"_id": 0}).to_list(100)
     return products
 
-@api_router.get("/products/{product_id}", response_model=Product)
-async def get_product(product_id: str):
-    product = await db.products.find_one({"id": product_id}, {"_id": 0})
+@api_router.get("/products/{slug_or_id}", response_model=Product)
+async def get_product(slug_or_id: str):
+    # Try finding by ID (UUID) for existing links first
+    product = await db.products.find_one({"id": slug_or_id}, {"_id": 0})
     if not product:
-        raise HTTPException(status_code=404, detail="Product not found")
+        # Then try finding by the new slug
+        product = await db.products.find_one({"slug": slug_or_id}, {"_id": 0})
+        if not product:
+            raise HTTPException(status_code=404, detail="Product not found")
     return product
 
 @api_router.put("/products/{product_id}", response_model=Product)
@@ -534,7 +555,10 @@ async def update_product(product_id: str, product: ProductCreate, user: dict = D
     existing = await db.products.find_one({"id": product_id})
     if not existing:
         raise HTTPException(status_code=404, detail="Product not found")
+    
     update_data = product.model_dump()
+    update_data['slug'] = generate_slug(update_data['name']) # Re-generate slug on update
+    
     await db.products.update_one({"id": product_id}, {"$set": update_data})
     updated_product = await db.products.find_one({"id": product_id}, {"_id": 0})
     return updated_product
@@ -792,6 +816,26 @@ async def remove_from_wishlist(product_id: str, user: dict = Depends(get_current
     updated_profile = await db.users.find_one({"_id": user_id})
     return updated_profile
 
+# --- Admin Cleanup Endpoint ---
+@api_router.post("/admin/cleanup")
+async def cleanup_collections(cleanup_data: CleanupRequest, user: dict = Depends(verify_admin)):
+    """Deletes all documents from specified collections."""
+    results = {}
+    valid_collections = ["products", "orders", "reviews", "coupons"]
+    
+    for collection_name in cleanup_data.collections:
+        if collection_name not in valid_collections:
+            results[collection_name] = "Skipped (Invalid collection name)"
+            continue
+            
+        try:
+            result = await db[collection_name].delete_many({})
+            results[collection_name] = f"Success: Deleted {result.deleted_count} documents."
+        except Exception as e:
+            results[collection_name] = f"Failure: {str(e)}"
+            
+    return {"message": "Cleanup complete.", "details": results}
+
 # --- Health check ---
 @api_router.get("/")
 async def root():
@@ -810,7 +854,7 @@ app.add_middleware(
 app.include_router(api_router)
 app.include_router(auth_router)
 app.include_router(coupon_router)
-app.include_router(ticker_router) # ADDED: Ticker Router
+app.include_router(ticker_router)
 
 
 logging.basicConfig(

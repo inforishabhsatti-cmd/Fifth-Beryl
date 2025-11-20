@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Trash2, ArrowLeft, Percent, DollarSign, Calendar } from 'lucide-react';
+import { Plus, Trash2, ArrowLeft, Percent, IndianRupee, Calendar } from 'lucide-react'; // CHANGED: DollarSign to IndianRupee
 import { Link } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
-import Footer from '../../components/Footer';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -163,7 +162,7 @@ const AdminCoupons = () => {
                       variant={formData.discount_type === 'fixed' ? 'default' : 'outline'}
                       className={`rounded-none ${formData.discount_type === 'fixed' ? 'bg-black text-white' : 'border-gray-300'}`}
                     >
-                      <DollarSign size={16} className="mr-2" /> Fixed Amount (₹)
+                      <IndianRupee size={16} className="mr-2" /> Fixed Amount (₹) {/* CHANGED ICON */}
                     </Button>
                   </div>
                 </div>
@@ -243,7 +242,7 @@ const AdminCoupons = () => {
                       <td className="py-4 px-6 text-black">
                         {coupon.discount_type === 'fixed' ? (
                             <div className="flex items-center text-sm font-medium">
-                                <DollarSign size={14} className="mr-1" /> {coupon.discount_value.toFixed(2)} OFF
+                                <IndianRupee size={14} className="mr-1" /> {coupon.discount_value.toFixed(2)} OFF {/* CHANGED ICON */}
                             </div>
                         ) : (
                             <div className="flex items-center text-sm font-medium">

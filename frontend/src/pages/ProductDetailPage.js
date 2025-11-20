@@ -1,17 +1,68 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Star, ShoppingCart, Check } from 'lucide-react';
+import { Star, ShoppingCart, Ruler } from 'lucide-react'; 
 import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
+// Size Chart Data (in inches, adjust as needed)
+const sizeChartData = {
+    units: 'Inches',
+    sizes: [
+        { size: 'S', chest: '38', length: '27', shoulder: '17' },
+        { size: 'M', chest: '40', length: '28', shoulder: '18' },
+        { size: 'L', chest: '42', length: '29', shoulder: '19' },
+        { size: 'XL', chest: '44', length: '30', shoulder: '20' },
+        { size: 'XXL', chest: '46', length: '31', shoulder: '21' },
+    ]
+};
+
+// NEW COMPONENT: Size Chart Dialog
+const SizeChartDialog = () => (
+    <Dialog>
+        <DialogTrigger asChild>
+            <Button variant="link" className="text-sm font-semibold p-0 text-gray-500 hover:text-white transition-colors h-auto flex items-center gap-1">
+                <Ruler size={14} /> Size Guide 
+            </Button>
+        </DialogTrigger>
+        <DialogContent className="max-w-lg bg-white rounded-none border-black">
+            <DialogHeader>
+                <DialogTitle className="playfair text-2xl text-black">Shirt Size Chart ({sizeChartData.units})</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-gray-600 mb-4">Measurements are garment dimensions, not body size.</p>
+            <Table className="border border-gray-200">
+                <TableHeader className="bg-gray-100">
+                    <TableRow>
+                        <TableHead className="font-bold text-black uppercase">Size</TableHead>
+                        <TableHead className="font-bold text-black uppercase">Chest (in)</TableHead>
+                        <TableHead className="font-bold text-black uppercase">Length (in)</TableHead>
+                        <TableHead className="font-bold text-black uppercase">Shoulder (in)</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {sizeChartData.sizes.map((row) => (
+                        <TableRow key={row.size} className="hover:bg-gray-50">
+                            <TableCell className="font-medium text-black">{row.size}</TableCell>
+                            <TableCell>{row.chest}</TableCell>
+                            <TableCell>{row.length}</TableCell>
+                            <TableCell>{row.shoulder}</TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+        </DialogContent>
+    </Dialog>
+);
+
 
 const ProductDetailPage = () => {
-  const { id } = useParams();
+  const { id } = useParams(); // id now receives the slug
   const navigate = useNavigate();
   const { addToCart } = useCart();
   
@@ -32,7 +83,7 @@ const ProductDetailPage = () => {
 
   const fetchProduct = async () => {
     try {
-      // Use 'api' instance which handles base URL
+      // API call uses the slug/id directly, which the backend handles
       const response = await api.get(`/products/${id}`);
       setProduct(response.data);
       if (response.data.variants?.length > 0) {
@@ -48,7 +99,11 @@ const ProductDetailPage = () => {
 
   const fetchReviews = async () => {
     try {
-      const response = await api.get(`/reviews/${id}`);
+      // When fetching reviews, we must still use the product's actual ID
+      const productId = product?.id;
+      if (!productId) return; 
+
+      const response = await api.get(`/reviews/${productId}`);
       setReviews(response.data);
     } catch (error) {
       console.error('Error fetching reviews:', error);
@@ -74,7 +129,7 @@ const ProductDetailPage = () => {
     }
     try {
       await api.post('/reviews', { 
-        product_id: id, 
+        product_id: product.id, // Use product.id here
         ...newReview 
       });
       
@@ -113,29 +168,25 @@ const ProductDetailPage = () => {
   const avgRating = reviews.length > 0 
     ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length 
     : 0;
-    
-  // ADDED: Discount calculation
+
   const discountPercent = product.mrp && product.mrp > product.price 
     ? Math.round(((product.mrp - product.price) / product.mrp) * 100) 
     : 0;
 
   return (
-    // MODIFIED: Entire page background changed to dark gray/black, and default text is white
     <div className="min-h-screen bg-black text-white pt-24">
       <Navbar />
       
-      {/* MODIFIED: Full-width dark wrapper for content area */}
       <div className="bg-black pb-20"> 
           
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
               
-              {/* Images: Kept on White Panel for high visual contrast */}
+              {/* Images */}
               <div>
                 <motion.div
                   initial={{ opacity: 0, x: -30 }}
                   animate={{ opacity: 1, x: 0 }}
-                  // Added white background, black text inside this panel
                   className="bg-white text-black border border-gray-100 overflow-hidden mb-4 aspect-[4/5] p-4 shadow-xl"
                 >
                   <img
@@ -165,11 +216,10 @@ const ProductDetailPage = () => {
                 </div>
               </div>
 
-              {/* Details: Now on Dark Background, text adjusted for visibility */}
+              {/* Details */}
               <motion.div
                 initial={{ opacity: 0, x: 30 }}
                 animate={{ opacity: 1, x: 0 }}
-                // Removed white background, using the dark parent bg. Increased padding for clean look.
                 className="pt-4 p-8 lg:p-0" 
               >
                 <h1 className="text-4xl font-bold mb-4 playfair text-white" data-testid="product-name">{product.name}</h1>
@@ -180,7 +230,6 @@ const ProductDetailPage = () => {
                       <Star
                         key={star}
                         size={18}
-                        // Changed star color to visible yellow/light gray
                         className={star <= Math.round(avgRating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-600'}
                       />
                     ))}
@@ -190,7 +239,7 @@ const ProductDetailPage = () => {
                   </span>
                 </div>
 
-                {/* MODIFIED: Price display now includes MRP and Discount */}
+                {/* Price display */}
                 <div className="flex items-baseline gap-4 mb-6">
                     <p className="text-3xl font-medium text-white" data-testid="product-price">
                         ₹{product.price.toFixed(2)}
@@ -223,7 +272,6 @@ const ProductDetailPage = () => {
                           setSelectedSize('');
                         }}
                         className={`relative w-10 h-10 rounded-full border transition-all ${
-                          // Adjusted rings/borders for dark mode visibility
                           selectedVariant?.color === variant.color ? 'ring-2 ring-white ring-offset-2 ring-offset-black border-transparent' : 'border-gray-700 hover:border-white'
                         }`}
                         style={{ backgroundColor: variant.color_code }}
@@ -236,21 +284,23 @@ const ProductDetailPage = () => {
                 {/* Size Selection */}
                 {selectedVariant && (
                   <div className="mb-10">
-                    <h3 className="text-sm font-bold uppercase tracking-wider mb-4 text-white">Size: <span className="font-normal text-gray-400">{selectedSize}</span></h3>
+                    {/* ADDED: Size Guide button */}
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-sm font-bold uppercase tracking-wider text-white">Size: <span className="font-normal text-gray-400">{selectedSize}</span></h3>
+                        <SizeChartDialog /> 
+                    </div>
+                    
                     <div className="flex gap-3 flex-wrap">
-                      {Object.entries(selectedVariant.sizes).map(([size, stock]) => (
+                      {Object.entries(selectedVariant.sizes).map(([size, stock]) => ( 
                         <button
                           key={size}
                           onClick={() => setSelectedSize(size)}
                           disabled={stock === 0}
                           className={`min-w-[3rem] h-12 px-4 border transition-all flex items-center justify-center ${
                             selectedSize === size
-                              // Selected: Invert colors (White BG / Black Text)
                               ? 'bg-white text-black border-white'
                               : stock === 0
-                              // Out of Stock: Darker gray background
                               ? 'bg-gray-800 text-gray-600 border-transparent cursor-not-allowed decoration-slice line-through'
-                              // Default: White text on transparent/dark background
                               : 'bg-black text-white border-gray-700 hover:border-white'
                           }`}
                           data-testid={`size-${size}`}
@@ -260,12 +310,12 @@ const ProductDetailPage = () => {
                       ))}
                     </div>
                     {selectedSize && selectedVariant.sizes[selectedSize] < 5 && selectedVariant.sizes[selectedSize] > 0 && (
-                      <p className="text-red-400 text-sm mt-2">Only {selectedVariant.sizes[selectedSize]} left!</p>
+                       <p className="text-red-400 text-sm mt-2">Only {selectedVariant.sizes[selectedSize]} left!</p>
                     )}
                   </div>
                 )}
 
-                {/* Add to Cart - Inverted button to White/Black for high contrast */}
+                {/* Add to Cart */}
                 <Button
                   onClick={handleAddToCart}
                   className="w-full bg-white hover:bg-gray-100 text-black py-7 text-lg rounded-none font-medium tracking-wide"
@@ -277,11 +327,10 @@ const ProductDetailPage = () => {
               </motion.div>
             </div>
 
-            {/* Reviews Section: Now on the dark background */}
+            {/* Reviews Section */}
             <div className="mt-24 border-t border-gray-800 pt-16">
               <h2 className="text-3xl font-bold mb-10 playfair text-center text-white">Customer Reviews</h2>
               
-              {/* User review area */}
               {user && (
                 <div className="bg-gray-900 p-8 mb-12 max-w-2xl mx-auto shadow-md">
                   <h3 className="font-bold mb-4 text-lg text-white">Write a Review</h3>
@@ -303,7 +352,6 @@ const ProductDetailPage = () => {
                     placeholder="Share your experience..."
                     value={newReview.comment}
                     onChange={(e) => setNewReview({ ...newReview, comment: e.target.value })}
-                    // Text area adjusted for dark mode
                     className="mb-4 bg-black text-white border-gray-700 focus:border-white rounded-none"
                     data-testid="review-comment"
                   />
@@ -311,7 +359,6 @@ const ProductDetailPage = () => {
                 </div>
               )}
 
-              {/* Display reviews */}
               <div className="grid gap-8 max-w-4xl mx-auto p-6">
                 {reviews.length === 0 ? (
                     <p className="text-center text-gray-400 italic">No reviews yet. Be the first to review this product.</p>
@@ -338,7 +385,6 @@ const ProductDetailPage = () => {
             </div>
           </div>
       </div>
-     
     </div>
   );
 };
