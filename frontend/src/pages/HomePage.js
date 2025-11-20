@@ -8,153 +8,150 @@ import axios from 'axios';
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const HomePage = () => {
-  const navigate = useNavigate();
-  const { isDark } = useTheme();
-  const [featuredProducts, setFeaturedProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [landingSettings, setLandingSettings] = useState(null);
-  const heroRef = useRef(null);
-  
-  const { scrollYProgress } = useScroll({
-    target: heroRef,
-    offset: ["start start", "end start"]
-  });
-  
-  const contentOpacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
-  const contentScale = useTransform(scrollYProgress, [0, 0.5], [1, 0.95]);
+  const navigate = useNavigate();
+  const { isDark } = useTheme();
+  const [featuredProducts, setFeaturedProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [landingSettings, setLandingSettings] = useState(null);
+  const heroRef = useRef(null);
+  const videoRef = useRef(null);
 
-  useEffect(() => {
-    fetchFeaturedProducts();
-    fetchLandingSettings();
-  }, []);
+  const { scrollYProgress } = useScroll({
+    target: heroRef,
+    offset: ["start start", "end start"],
+  });
 
-  const fetchLandingSettings = async () => {
-    try {
-      const response = await axios.get(`${API}/landing-page`);
-      setLandingSettings(response.data);
-    } catch (error) {
-      console.error('Error fetching landing settings:', error);
-    }
-  };
+  const contentOpacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
+  const contentScale = useTransform(scrollYProgress, [0, 0.5], [1, 0.95]);
 
-  const fetchFeaturedProducts = async () => {
-    try {
-      const response = await axios.get(`${API}/products/featured`);
-      setFeaturedProducts(response.data.slice(0, 4));
-    } catch (error) {
-      console.error('Error fetching featured products:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    fetchFeaturedProducts();
+    fetchLandingSettings();
+  }, []);
 
-  return (
-    <div className={`min-h-screen transition-colors duration-300 bg-white pt-20`}>
-      {/* Hero Section */}
-      <section 
-        ref={heroRef}
-        className="relative h-[85vh] sm:h-[95vh] flex items-center justify-center overflow-hidden bg-black"
-      >
-        {landingSettings?.hero_media ? (
-          <motion.div 
-            style={{ scale: contentScale, opacity: contentOpacity }}
-            className="absolute inset-0 z-0"
-          >
-            {landingSettings.hero_media_type === 'video' ? (
-              <video
-                autoPlay
-                loop
-                muted
-                playsInline
-                className="w-full h-full object-cover opacity-90"
-              >
-                <source src={landingSettings.hero_media} type="video/mp4" />
-              </video>
-            ) : (
-              <img
-                src={landingSettings.hero_media}
-                alt="Hero"
-                className="w-full h-full object-cover"
-              />
-            )}
-            <div className="absolute inset-0 bg-black/30" />
-          </motion.div>
-        ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-black to-gray-900" />
-        )}
+  useEffect(() => {
+    if (landingSettings?.hero_media_type === "video" && videoRef.current) {
+      const playPromise = videoRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(() => {});
+      }
+    }
+  }, [landingSettings]);
 
-        {/* Content Overlay - Now COMPLETELY EMPTY, leaving only the video */}
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center mt-16 sm:mt-0">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-          >
-            {/* All previous content (text and button) has been removed. */}
-          </motion.div>
-        </div>
-      </section>
+  const fetchLandingSettings = async () => {
+    try {
+      const response = await axios.get(`${API}/landing-page`);
+      setLandingSettings(response.data);
+    } catch (error) {
+      console.error("Error fetching landing settings:", error);
+    }
+  };
 
-      {/* Featured Products - Centered & Mobile Friendly */}
-      <section className="py-12 sm:py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col items-center text-center mb-8 sm:mb-12">
-            <h2 className="text-3xl sm:text-4xl font-bold playfair text-gray-900 mb-2">
-              New Arrivals
-            </h2>
-            <p className="text-gray-500 text-sm sm:text-base mb-4">Curated just for you.</p>
-            <Link 
-              to="/products" 
-              className="text-sm font-medium text-black border-b border-black pb-0.5 hover:text-gray-600 hover:border-gray-600 transition-colors"
-            >
-              View All Collection
-            </Link>
-          </div>
+  const fetchFeaturedProducts = async () => {
+    try {
+      const response = await axios.get(`${API}/products/featured`);
+      setFeaturedProducts(response.data.slice(0, 4));
+    } catch (error) {
+      console.error("Error fetching featured products:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-          {loading ? (
-            <div className="flex justify-center py-20">
-              <div className="spinner" />
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-8 sm:gap-8">
-              {featuredProducts.map((product, index) => (
-                <ProductCard 
-                  key={product.id}
-                  product={product}
-                  index={index}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
+  return (
+    <div className="min-h-screen bg-white transition-colors duration-300">
+      
+      {/* HERO SECTION */}
+      <section
+        ref={heroRef}
+        className="relative h-screen flex items-center justify-center overflow-hidden bg-black mt-[-64px]"
+      >
+        {landingSettings?.hero_media && (
+          <div className="absolute inset-0 z-0">
+            {landingSettings.hero_media_type === "video" ? (
+              <video
+                ref={videoRef}
+                muted
+                autoPlay
+                loop
+                playsInline
+                preload="metadata"
+                disablePictureInPicture
+                controls={false}
+                className="absolute top-0 left-0 w-full h-full object-cover pointer-events-none"
+              >
+                <source src={landingSettings.hero_media} type="video/mp4" />
+              </video>
+            ) : (
+              <img
+                src={landingSettings.hero_media}
+                alt="Hero"
+                className="absolute top-0 left-0 w-full h-full object-cover"
+              />
+            )}
 
-      {/* CTA Section */}
-      <section className="py-20 bg-[#faf8f5] relative overflow-hidden">
-        <div className="max-w-3xl mx-auto px-4 text-center relative z-10">
-          <span className="text-gray-500 text-sm font-bold tracking-widest uppercase mb-4 block">
-            Exclusive
-          </span>
-          <h2 className="text-3xl sm:text-5xl font-bold mb-6 playfair text-gray-900">
-            Redefine Your Style
-          </h2>
-          <p className="text-base sm:text-lg text-gray-600 mb-8 font-light">
-            Experience the perfect blend of comfort and sophistication with our latest collection.
-          </p>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => navigate('/products')}
-            className="bg-gray-900 text-white px-10 py-4 rounded-full font-medium hover:bg-gray-800 transition-all shadow-xl"
-          >
-            Explore Now
-          </motion.button>
-        </div>
-      </section>
+            <motion.div
+              style={{ scale: contentScale, opacity: contentOpacity }}
+              className="absolute inset-0 bg-black/30"
+            />
+          </div>
+        )}
+      </section>
 
-      {/* REMOVED: The local <Footer /> component to prevent duplication */}
-    </div>
-  );
+      {/* FEATURED PRODUCTS */}
+      <section className="py-12 sm:py-24 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col items-center text-center mb-8 sm:mb-12">
+            <h2 className="text-3xl sm:text-4xl font-bold playfair text-gray-900 mb-2">
+              New Arrivals
+            </h2>
+            <p className="text-gray-500 text-sm sm:text-base mb-4">Curated just for you.</p>
+            <Link
+              to="/products"
+              className="text-sm font-medium text-black border-b border-black pb-0.5 hover:text-gray-600 hover:border-gray-600 transition-colors"
+            >
+              View All Collection
+            </Link>
+          </div>
+
+          {loading ? (
+            <div className="flex justify-center py-20">
+              <div className="spinner" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-8 sm:gap-8">
+              {featuredProducts.map((product, index) => (
+                <ProductCard key={product.id} product={product} index={index} />
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* CTA SECTION */}
+      <section className="py-20 bg-[#faf8f5] relative overflow-hidden">
+        <div className="max-w-3xl mx-auto px-4 text-center relative z-10">
+          <span className="text-gray-500 text-sm font-bold tracking-widest uppercase mb-4 block">
+            Exclusive
+          </span>
+          <h2 className="text-3xl sm:text-5xl font-bold mb-6 playfair text-gray-900">
+            Redefine Your Style
+          </h2>
+          <p className="text-base sm:text-lg text-gray-600 mb-8 font-light">
+            Experience the perfect blend of comfort and sophistication with our latest collection.
+          </p>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => navigate("/products")}
+            className="bg-gray-900 text-white px-10 py-4 rounded-full font-medium hover:bg-gray-800 transition-all shadow-xl"
+          >
+            Explore Now
+          </motion.button>
+        </div>
+      </section>
+    </div>
+  );
 };
 
 export default HomePage;
