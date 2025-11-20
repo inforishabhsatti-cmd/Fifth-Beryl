@@ -157,8 +157,6 @@ const CartPage = () => {
           </div>
         </div>
       </div>
-
-      <Footer />
     </div>
   );
 };

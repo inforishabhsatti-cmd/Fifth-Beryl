@@ -338,7 +338,7 @@ const ProductDetailPage = () => {
             </div>
           </div>
       </div>
-      <Footer />
+     
     </div>
   );
 };

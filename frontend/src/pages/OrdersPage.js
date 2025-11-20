@@ -187,7 +187,7 @@ const OrdersPage = () => {
           </div>
         )}
       </div>
-      <Footer />
+     
     </div>
   );
 };

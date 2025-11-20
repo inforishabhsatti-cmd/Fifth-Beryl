@@ -102,7 +102,7 @@ const WishlistPage = () => {
           </div>
         )}
       </div>
-      <Footer />
+    
     </div>
   );
 };
