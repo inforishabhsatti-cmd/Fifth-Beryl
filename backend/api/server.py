@@ -281,11 +281,21 @@ class Order(BaseModel):
     status: str = Field("pending", pattern="^(pending|processing|shipped|delivered|cancelled|abandoned)$")
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    # ADDED: Fields for Return Management (Expected by AdminCustomers.js)
+    return_status: Optional[str] = Field("none", pattern="^(none|requested|approved|rejected|completed)$")
+    return_reason: Optional[str] = None
+    return_request_date: Optional[str] = None
+    admin_notes: Optional[str] = None
 
 class OrderUpdateAdmin(BaseModel):
     status: str = Field(..., pattern="^(pending|processing|shipped|delivered|cancelled|abandoned)$")
     tracking_number: Optional[str] = None
     courier: Optional[str] = None
+
+# ADDED MODEL: For Admin Return Status Update
+class ReturnUpdateAdmin(BaseModel):
+    return_status: str = Field(..., pattern="^(requested|approved|rejected|completed)$")
+    admin_notes: Optional[str] = None
 
 
 class OrderCreate(BaseModel):
@@ -817,6 +827,89 @@ async def get_inventory_analytics(user: dict = Depends(verify_admin)):
             "variants": product.get('variants', [])
         })
     return inventory_data
+
+# ADDED ENDPOINT: Fixes 404 for fetching customer analytics (Used by AdminCustomers.js)
+@api_router.get("/admin/users")
+async def get_user_analytics(user: dict = Depends(verify_admin)):
+    users_cursor = db.users.find({}, {"hashed_password": 0})
+    all_users = await users_cursor.to_list(10000)
+    
+    orders_cursor = db.orders.find({})
+    all_orders = await orders_cursor.to_list(10000)
+    
+    user_analytics = []
+    
+    for u in all_users:
+        user_id = u['_id']
+        name = u.get('name', 'N/A')
+        email = u['email']
+        
+        user_orders = [o for o in all_orders if o.get('user_id') == user_id]
+        
+        total_spent = 0.0
+        order_count = 0
+        abandoned_cart_count = 0
+        return_request_count = 0
+        
+        for order in user_orders:
+            status = order.get('status', 'pending')
+            
+            # Count successful orders for total spent/order count
+            if status in ["processing", "shipped", "delivered"]:
+                total_spent += order.get('final_amount', 0.0)
+                order_count += 1
+            elif status == "abandoned":
+                abandoned_cart_count += 1
+                
+            # Count active return requests (requested or approved status)
+            return_status = order.get('return_status')
+            if return_status in ["requested", "approved"]:
+                return_request_count += 1
+
+        user_analytics.append({
+            "user_id": user_id,
+            "name": name,
+            "email": email,
+            "total_spent": total_spent,
+            "order_count": order_count,
+            "abandoned_cart_count": abandoned_cart_count,
+            "return_request_count": return_request_count
+        })
+        
+    user_analytics.sort(key=lambda x: x['total_spent'], reverse=True)
+    
+    return user_analytics
+
+
+# ADDED ENDPOINT: Required for the Returns tab in AdminCustomers.js
+@api_router.get("/admin/returns")
+async def get_all_return_requests(user: dict = Depends(verify_admin)):
+    # Find orders with active or recently processed return statuses
+    query = {"return_status": {"$in": ["requested", "approved", "rejected", "completed"]}}
+    returns = await db.orders.find(query, {"_id": 0}).sort("return_request_date", -1).to_list(1000)
+    return returns
+
+
+# ADDED ENDPOINT: Required for updating return status in ReturnStatusUpdater component
+@api_router.put("/admin/returns/{order_id}")
+async def update_return_status(order_id: str, update_data: ReturnUpdateAdmin, user: dict = Depends(verify_admin)):
+    now_iso = datetime.now(timezone.utc).isoformat()
+    
+    existing_order = await db.orders.find_one({"id": order_id})
+    if not existing_order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    update_fields = {
+        "return_status": update_data.return_status,
+        "admin_notes": update_data.admin_notes,
+        "updated_at": now_iso
+    }
+    
+    await db.orders.update_one(
+        {"id": order_id},
+        {"$set": update_fields}
+    )
+    return {"message": f"Return status for order {order_id} updated to {update_data.return_status}"}
 
 # --- Landing Page Routes ---
 @api_router.get("/landing-page")
