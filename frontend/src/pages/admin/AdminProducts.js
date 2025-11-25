@@ -134,7 +134,7 @@ const AdminProducts = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   
-  // UPDATED: Added color and color_code to formData state
+  // FIX 1: Added color and color_code to formData state
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -177,30 +177,44 @@ const AdminProducts = () => {
 
   const handleSaveProduct = async () => {
     try {
-      // UPDATED: Added validation for color and color_code
+      // FIX 2: Added validation for color and color_code
       if (!formData.name || !formData.price || !formData.fit || !formData.description || !formData.color || !formData.color_code) {
         toast.error('Name, Description, Price, Fit, and Main Color are required');
         return;
       }
       
+      // FIX 3: Robust numerical check before sending to API (API requires price > 0 float)
+      if (isNaN(parseFloat(formData.price)) || parseFloat(formData.price) <= 0) {
+        toast.error('Sale Price must be a positive number.');
+        return;
+      }
+      
+      // FIX: Destructure price and mrp to handle empty string issue
+      const { mrp, price, ...rest } = formData;
+      
+      const finalPriceValue = parseFloat(price);
+      // Ensure finalMrpValue is null if mrp is empty or not a valid number
+      const finalMrpValue = mrp ? parseFloat(mrp) : null; 
+
       const finalVariants = formData.variants.length > 0 ? formData.variants : [
            { color: "Standard", color_code: "#000000", sizes: { "S": 10, "M": 10, "L": 10, "XL": 10 } }
       ];
 
-      // Prepare data for API
+      // Prepare data for API using destructured values
       const productData = {
-        ...formData,
-        price: parseFloat(formData.price),
-        mrp: formData.mrp ? parseFloat(formData.mrp) : undefined, // Send as undefined if empty
+        ...rest, 
+        price: finalPriceValue,
+        mrp: finalMrpValue,
         variants: finalVariants
       };
 
       if (editingProduct) {
+        // Use editingProduct.id which holds the product ID
         await api.put(`/products/${editingProduct.id}`, productData);
-        toast.success('Product updated');
+        toast.success('Product updated successfully!');
       } else {
         await api.post('/products', productData);
-        toast.success('Product created');
+        toast.success('Product created successfully!');
       }
       
       setDialogOpen(false); 
@@ -208,8 +222,10 @@ const AdminProducts = () => {
       resetForm();
       fetchProducts();
     } catch (error) {
+      // FIX 4: Ensure error toast shows up when update fails
       console.error('Error saving product:', error.response?.data || error);
-      toast.error('Failed to save product. Check required fields.');
+      const apiError = error.response?.data?.detail || 'Failed to save product. Check required fields or server logs.';
+      toast.error(apiError);
     }
   };
 
@@ -229,11 +245,13 @@ const AdminProducts = () => {
     setFormData({
       name: product.name || '',
       description: product.description || '',
-      mrp: product.mrp ? product.mrp.toString() : '',
-      price: product.price ? product.price.toString() : '',
+      // FIX 5: Ensure mrp and price are converted to strings for the input field
+      mrp: product.mrp !== null && product.mrp !== undefined ? product.mrp.toString() : '',
+      price: product.price !== null && product.price !== undefined ? product.price.toString() : '',
       fit: product.fit || 'Regular Fit', // ADDED: Read fit
-      color: product.color || '', // NEW: Read main color name
-      color_code: product.color_code || '#000000', // NEW: Read main color code
+      // FIX 4: Ensure color is read from product or default to avoid client-side validation fail on old products
+      color: product.color || 'Default', 
+      color_code: product.color_code || '#000000', 
       category: product.category || 'shirts',
       featured: product.featured || false,
       images: product.images || [],
@@ -249,8 +267,8 @@ const AdminProducts = () => {
       mrp: '',
       price: '',
       fit: 'Regular Fit', // ADDED: Reset fit
-      color: '', // NEW: Reset color
-      color_code: '#000000', // NEW: Reset color code
+      color: '', // FIX 5: Reset color
+      color_code: '#000000', // FIX 5: Reset color code
       category: 'shirts',
       featured: false,
       images: [],
@@ -291,7 +309,7 @@ const AdminProducts = () => {
               <div className="space-y-8 py-4">
                 
                 {/* 1. General Info Section */}
-                {/* UPDATED: Changed grid to 4 columns on large screens to fit new fields */}
+                {/* FIX 6: Updated grid to include new color fields */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                   <div>
                     <Label htmlFor="name">Product Name *</Label>
@@ -321,7 +339,7 @@ const AdminProducts = () => {
                     </Select>
                   </div>
 
-                  {/* NEW FIELD: Main Color Name */}
+                  {/* FIX 7: NEW FIELD: Main Color Name */}
                   <div>
                     <Label htmlFor="color">Main Color Name *</Label>
                     <Input
@@ -334,7 +352,7 @@ const AdminProducts = () => {
                     />
                   </div>
 
-                  {/* NEW FIELD: Main Color Code */}
+                  {/* FIX 7: NEW FIELD: Main Color Code */}
                   <div>
                     <Label htmlFor="color_code">Main Color Code *</Label>
                     <div className="flex items-center gap-2 mt-1">
@@ -492,12 +510,12 @@ const AdminProducts = () => {
                       </td>
                       <td className="py-4 px-6 font-medium text-black">{product.name}</td>
                       <td className="py-4 px-6">
-                        {/* ADDED: Display color swatch and name */}
+                        {/* FIX 9: Display color swatch and name */}
                         <div className="flex items-center gap-2">
                             <div 
                                 className="w-4 h-4 rounded-full border border-gray-300" 
                                 style={{ backgroundColor: product.color_code || '#ffffff' }}
-                                title={product.color}
+                                title={product.color || '-'}
                             ></div>
                             <span className="text-gray-600 capitalize">{product.color || '-'}</span>
                         </div>

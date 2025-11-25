@@ -73,7 +73,7 @@ const ProductDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [selectedVariant, setSelectedVariant] = useState(null);
   const [selectedSize, setSelectedSize] = useState('');
-  const [selectedImage, setSelectedImage] = useState(0);
+  const [selectedImage, setSelectedImage] = useState(0); 
   const [reviews, setReviews] = useState([]);
   const [newReview, setNewReview] = useState({ rating: 5, comment: '' });
   const [recommendations, setRecommendations] = useState([]);
@@ -158,6 +158,10 @@ const ProductDetailPage = () => {
     }
   };
 
+  // FIX: Set displayImages to always be the full list of product images.
+  // The unreliable color-name-in-URL filtering is removed to prevent images from disappearing.
+  const displayImages = product?.images || [];
+
   if (loading) {
     return (
       <div className="min-h-screen bg-white">
@@ -189,11 +193,12 @@ const ProductDetailPage = () => {
     ? Math.round(((product.mrp - product.price) / product.mrp) * 100) 
     : 0;
 
-  const selectedMedia = product.images[selectedImage];
+  // Use the currently selected image from the displayImages array
+  const selectedMedia = displayImages[selectedImage];
   const isVideo = selectedMedia?.url.includes('/video/') || selectedMedia?.url.endsWith('.mp4') || selectedMedia?.url.endsWith('.webm');
   
   const mainMediaUrl = selectedMedia?.url.replace('/upload/', '/upload/w_1200,q_auto,f_auto/') || '/placeholder.jpg';
-  const thumbnailMediaUrl = selectedMedia?.url.replace('/upload/', '/upload/w_100,q_auto,f_auto/') || '/placeholder.jpg';
+  
 
   return (
     <div className="min-h-screen bg-black text-white pt-32">
@@ -255,7 +260,8 @@ const ProductDetailPage = () => {
                 
                 {/* Thumbnails */}
                 <div className="grid grid-cols-4 gap-4 px-4">
-                  {product.images.map((image, index) => (
+                  {/* FIX: Map over the displayImages array */}
+                  {displayImages.map((image, index) => (
                     <button
                       key={index}
                       onClick={() => setSelectedImage(index)}
@@ -338,6 +344,7 @@ const ProductDetailPage = () => {
                         onClick={() => {
                           setSelectedVariant(variant);
                           setSelectedSize('');
+                          setSelectedImage(0); // FIX: Reset image index to 0 when changing color
                         }}
                         className={`relative w-10 h-10 rounded-full border transition-all ${
                           selectedVariant?.color === variant.color ? 'ring-2 ring-white ring-offset-2 ring-offset-black border-transparent' : 'border-gray-700 hover:border-white'

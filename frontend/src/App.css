@@ -1,6 +1,10 @@
-/* frontend/src/App.css */
+/* ======================= GLOBAL ======================= */
 
-/* --- CUSTOM COMPONENT STYLES --- */
+/* Prevent horizontal scrolling */
+body {
+  overflow-x: hidden;
+  background-color: #ffffff;
+}
 
 /* Gradient Text: Clean Black Gradient */
 .gradient-text {
@@ -10,63 +14,57 @@
   background-clip: text;
 }
 
-/* --- BUTTONS --- */
+/* ======================= BUTTONS ======================= */
 
-/* Primary: Solid Black -> Stays Dark on Hover */
+/* Primary Button */
 .btn-primary {
   @apply bg-black text-white px-8 py-3 font-medium transition-all duration-300;
   border: 1px solid black;
-  border-radius: 0px;
+  border-radius: 0;
   letter-spacing: 0.5px;
   position: relative;
   overflow: hidden;
 }
-
 .btn-primary:hover {
   @apply bg-gray-900 transform -translate-y-0.5 shadow-lg;
 }
 
-/* Secondary Button - Shutter Hover Effect */
+/* Secondary Button – Shutter hover effect */
 .btn-secondary {
   @apply bg-transparent px-8 py-3 font-medium;
   color: black;
   border: 1px solid black;
-  border-radius: 0px;
+  border-radius: 0;
   letter-spacing: 0.5px;
   position: relative;
   overflow: hidden;
   z-index: 1;
   transition: color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
 }
-
 .btn-secondary::after {
   content: "";
   position: absolute;
-  top: 0;
-  left: 0;
+  inset: 0;
   width: 0;
-  height: 100%;
   background-color: black;
   transition: width 0.3s ease;
   z-index: -1;
 }
-
 .btn-secondary:hover {
-  @apply border-black transform -translate-y-0.5 shadow-lg;
+  @apply transform -translate-y-0.5 shadow-lg;
+  border-color: black;
   color: white;
 }
-
 .btn-secondary:hover::after {
   width: 100%;
 }
 
-/* --- CARDS --- */
+/* ======================= CARDS ======================= */
 .card {
   @apply bg-white p-6 transition-all duration-300;
   border: 1px solid #f3f4f6;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
 }
-
 .card:hover {
   border-color: #e5e7eb;
   box-shadow: 0 15px 30px rgba(0, 0, 0, 0.08);
@@ -83,25 +81,23 @@
   box-shadow: 0 10px 30px rgba(0,0,0,0.15);
 }
 
-/* Loading Spinner */
+/* ======================= LOADER ======================= */
 .spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid #f3f3f3;
-  border-top: 3px solid #000000;
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e7e7e7;
+  border-top: 3px solid black;
   border-radius: 50%;
-  animation: spin 1s linear infinite;
+  animation: spin .75s linear infinite;
 }
-
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
 
-/* Animations */
+/* ======================= ANIMATIONS ======================= */
 .animate-fade-in {
   animation: fadeIn 0.8s ease-out forwards;
 }
-
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
@@ -115,7 +111,36 @@
   box-shadow: 0 15px 30px rgba(0,0,0,0.1);
 }
 
-/* Disable content when splash shutter active */
+/* ======================= SPLASH SHUTTER ======================= */
+.shutter-glass-container {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+  background-color: black;
+  transition: opacity 0.45s ease-out;
+}
+.shutter-glass-container.shutter-fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.shutter-slide-up {
+  position: absolute;
+  inset: 0;
+  background-color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: transform 1s cubic-bezier(0.7, 0, 0.3, 1);
+  transform: translateY(0);
+}
+.shutter-slide-up.shutter-open {
+  transform: translateY(-100%);
+}
+
+/* Disable content while shutter animation */
 .app-content-blur {
   opacity: 0;
   pointer-events: none;
@@ -127,38 +152,7 @@
   transition: opacity 0.5s ease;
 }
 
-/* Splash Screen */
-.shutter-glass-container {
-  position: fixed;
-  inset: 0;
-  width: 100vw;
-  height: 100vh;
-  z-index: 9999;
-  transition: opacity 0.5s ease-out;
-  background-color: black;
-}
-
-.shutter-glass-container.shutter-fade-out {
-  opacity: 0;
-  pointer-events: none;
-}
-
-.shutter-slide-up {
-  position: absolute;
-  inset: 0;
-  background-color: hsl(var(--background));
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  transition: transform 1s cubic-bezier(0.7, 0, 0.3, 1);
-  transform: translateY(0);
-}
-
-.shutter-slide-up.shutter-open {
-  transform: translateY(-100%);
-}
-
-/* --- TICKER LABEL FIXED TOP (NO REPEAT) --- */
+/* ======================= TICKER LABEL ======================= */
 .ticker-slow-mobile {
   will-change: transform;
 }
@@ -170,12 +164,11 @@
   }
 }
 
-/* Prevent horizontal scrolling on mobile */
-body {
-  overflow-x: hidden;
-}
-
-/* Rotate SVG downward arrow when accordion open */
+/* ================= ACCORDION ARROW ROTATION ================= */
 details[open] summary svg {
   transform: rotate(180deg);
+  transition: transform 0.3s ease;
+}
+summary svg {
+  transition: transform 0.3s ease;
 }

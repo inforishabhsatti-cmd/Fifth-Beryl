@@ -28,12 +28,13 @@ import AdminInventory from './pages/admin/AdminInventory';
 import AdminAnalytics from './pages/admin/AdminAnalytics';
 import AdminLandingPage from './pages/admin/AdminLandingPage';
 import AdminCoupons from './pages/admin/AdminCoupons';
-import AdminTicker from './pages/admin/AdminTicker'; 
+import AdminTicker from './pages/admin/AdminTicker';
+import AdminCustomers from "./pages/admin/AdminCustomers";
 
 // Components
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
-import TickerLabel from './components/TickerLabel'; 
+import TickerLabel from './components/TickerLabel';
 import { Toaster } from './components/ui/toaster';
 import AdminRoute from './components/AdminRoute';
 import SplashShutter from './components/SplashShutter';
@@ -60,16 +61,16 @@ function App() {
         <CartProvider>
           <WishlistProvider>
             {/* WRAPPER: HelmetProvider enabled dynamic SEO tags */}
-            <HelmetProvider> 
+            <HelmetProvider>
               <Router>
                 <div className="relative min-h-screen">
-                  
+
                   {/* 1. Top Ticker Label (Fixed at top: 0, z-50) */}
-                  <TickerLabel position="top" /> 
+                  <TickerLabel position="top" />
 
                   {/* 2. Navbar (Assuming it is fixed/sticky and starts at top: 2rem to clear the Ticker) */}
                   <Navbar />
-                  
+
                   <main>
                     <Routes>
                       <Route path="/" element={<HomePage />} />
@@ -91,7 +92,9 @@ function App() {
                         <Route path="analytics" element={<AdminAnalytics />} />
                         <Route path="landing-page" element={<AdminLandingPage />} />
                         <Route path="coupons" element={<AdminCoupons />} />
-                        <Route path="ticker" element={<AdminTicker />} /> 
+                        <Route path="ticker" element={<AdminTicker />} />
+                        <Route path="customers" element={<AdminCustomers />} />   {/* <-- FIXED */}
+
                         {/* Catch-all for /admin/* */}
                         <Route path="*" element={<Navigate to="/admin" />} />
                       </Route>
@@ -100,11 +103,11 @@ function App() {
                       <Route path="*" element={<Navigate to="/" />} />
                     </Routes>
                   </main>
-                  
-                  {/* Bottom Ticker Label above the Footer */}
-                  <TickerLabel position="bottom" /> 
 
-                  <Footer /> 
+                  {/* Bottom Ticker Label above the Footer */}
+                  <TickerLabel position="bottom" />
+
+                  <Footer />
 
                   {/* 2. Splash Screen Overlay (Renders on top if loading) */}
                   {isShutterLoading && (

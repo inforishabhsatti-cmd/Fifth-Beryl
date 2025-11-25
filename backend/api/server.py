@@ -24,11 +24,19 @@ from pymongo import ASCENDING, DESCENDING
 import math
 
 # --- IMPORTS FOR SECURITY ---
-# REMOVED: fastapi_limiter, redis.asyncio.Redis (from previous step's fix)
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 import httpx
 # --- END IMPORTS ---
+
+
+# --- LOGGING INITIALIZATION (MOVED TO TOP) ---
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+# --- END LOGGING ---
 
 
 ROOT_DIR = Path(__file__).parent.parent
@@ -40,8 +48,6 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7 # 7 days
 FRONTEND_URL = os.environ.get('REACT_APP_URL', 'http://localhost:3000')
 
-# REMOVED: REDIS_URL configuration
-
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 security = HTTPBearer()
@@ -49,10 +55,15 @@ security = HTTPBearer()
 
 
 # MongoDB connection
-mongo_url = os.environ['MONGO_URL']
+try:
+    mongo_url = os.environ['MONGO_URL']
+except KeyError:
+    logger.error("MONGO_URL not found in environment variables.")
+    raise Exception("MONGO_URL must be configured.")
+    
 client = AsyncIOMotorClient(mongo_url)
 ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL') 
-db = client[os.environ['DB_NAME']]
+db = client[os.environ.get('DB_NAME', 'default-db-name')] # Use .get for safety
 
 # Razorpay client
 razorpay_client = razorpay.Client(auth=(os.environ.get('RAZORPAY_KEY_ID', 'rzp_test_key'), os.environ.get('RAZORPAY_KEY_SECRET', 'rzp_test_secret')))
@@ -165,10 +176,8 @@ class Product(BaseModel):
     description: str
     mrp: Optional[float] = None
     price: float
-    slug: str # ADDED: URL-friendly slug
-    fit: str = Field('Regular Fit', description="Shirt fit type.") # MODIFIED: Added default 'Regular Fit' for backward compatibility
-    color: Optional[str] = Field(None, description="Main product color name.") # FIX: Made Optional for backward compatibility with old data
-    color_code: Optional[str] = Field(None, description="Main product color code.") # FIX: Made Optional for backward compatibility with old data
+    slug: str
+    fit: str = Field('Regular Fit', description="Shirt fit type.")
     images: List[ProductImage]
     variants: List[ProductVariant]
     category: str = "shirts"
@@ -182,24 +191,21 @@ class PaginatedProducts(BaseModel):
     current_page: int
 
 class ProductCreate(BaseModel):
-    name: str = Field(..., min_length=3, max_length=100) # VALIDATION ADDED
-    description: str = Field(..., min_length=10) # VALIDATION ADDED
-    mrp: Optional[float] = Field(None, gt=0, description="Maximum Retail Price, must be positive.") # VALIDATION ADDED
-    price: float = Field(..., gt=0, description="Sale Price, must be positive.") # VALIDATION ADDED
-    fit: str = Field(..., pattern="^(Slim Fit|Regular Fit|Relaxed Fit|Tailored Fit)$") # ADDED: Fit field with validation
-    color: str = Field(..., min_length=1, max_length=50) # ADDED: Main color name with validation
-    color_code: str = Field(..., pattern="^#[0-9a-fA-F]{6}$") # ADDED: Main color code with validation
+    name: str = Field(..., min_length=3, max_length=100)
+    description: str = Field(..., min_length=10)
+    mrp: Optional[float] = Field(None, gt=0, description="Maximum Retail Price, must be positive.")
+    price: float = Field(..., gt=0, description="Sale Price, must be positive.")
+    fit: str = Field(..., pattern="^(Slim Fit|Regular Fit|Relaxed Fit|Tailored Fit)$")
     images: List[ProductImage]
     variants: List[ProductVariant]
     category: str = "shirts"
     featured: bool = False
     
-# NEW MODELS: Coupon Management
 class Coupon(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     code: str
-    discount_type: str = Field(..., pattern="^(fixed|percentage)$") # "fixed" or "percentage"
+    discount_type: str = Field(..., pattern="^(fixed|percentage)$")
     discount_value: float
     min_purchase: float = 0.0
     expiry_date: Optional[str] = None
@@ -207,10 +213,10 @@ class Coupon(BaseModel):
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     
 class CouponCreate(BaseModel):
-    code: str = Field(..., min_length=3, max_length=15, pattern="^[A-Z0-9]+$") # VALIDATION ADDED
+    code: str = Field(..., min_length=3, max_length=15, pattern="^[A-Z0-9]+$")
     discount_type: str = Field(..., pattern="^(fixed|percentage)$")
-    discount_value: float = Field(..., gt=0) # VALIDATION ADDED
-    min_purchase: float = Field(0.0, ge=0) # VALIDATION ADDED
+    discount_value: float = Field(..., gt=0)
+    min_purchase: float = Field(0.0, ge=0)
     expiry_date: Optional[str] = None
 
 class CouponValidation(BaseModel):
@@ -230,8 +236,8 @@ class Review(BaseModel):
     product_id: str
     user_id: str
     user_name: str
-    rating: int = Field(..., ge=1, le=5) # VALIDATION ADDED
-    comment: str = Field(..., min_length=10, max_length=500) # VALIDATION ADDED
+    rating: int = Field(..., ge=1, le=5)
+    comment: str = Field(..., min_length=10, max_length=500)
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 class ReviewCreate(BaseModel):
@@ -270,12 +276,14 @@ class Order(BaseModel):
     coupon_code: Optional[str] = None
     tracking_number: Optional[str] = None
     courier: Optional[str] = None
-    status: str = Field("pending", pattern="^(pending|processing|shipped|delivered|cancelled|abandoned)$") # MODIFIED: Added abandoned
+    payment_id: Optional[str] = None # FIXED: Added back missing payment fields
+    razorpay_order_id: Optional[str] = None # FIXED: Added back missing payment fields
+    status: str = Field("pending", pattern="^(pending|processing|shipped|delivered|cancelled|abandoned)$")
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 class OrderUpdateAdmin(BaseModel):
-    status: str = Field(..., pattern="^(pending|processing|shipped|delivered|cancelled|abandoned)$") # MODIFIED: Added abandoned
+    status: str = Field(..., pattern="^(pending|processing|shipped|delivered|cancelled|abandoned)$")
     tracking_number: Optional[str] = None
     courier: Optional[str] = None
 
@@ -316,7 +324,7 @@ class UserBase(BaseModel):
     name: str
 
 class UserCreate(UserBase):
-    password: str = Field(..., min_length=8) # VALIDATION ADDED
+    password: str = Field(..., min_length=8)
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -639,8 +647,11 @@ async def create_razorpay_order(order_data: OrderCreate, user: dict = Depends(ge
     # Ensure final amount is not negative
     final_amount = max(0.0, final_amount)
     
+    # FIX: Use model_dump(exclude_none=True) and pass explicit values to avoid TypeError
+    order_data_for_unpacking = order_data.model_dump(exclude={"total_amount", "coupon_code"})
+
     order_obj = Order(
-        **order_data.model_dump(),
+        **order_data_for_unpacking,
         user_id=user['_id'],
         user_email=user.get('email', ''),
         total_amount=total_amount, # Original total
@@ -650,12 +661,19 @@ async def create_razorpay_order(order_data: OrderCreate, user: dict = Depends(ge
     )
     
     # Razorpay amount must be in paise (final_amount)
-    razorpay_order = razorpay_client.order.create({
-        "amount": int(final_amount * 100),
-        "currency": "INR",
-        "payment_capture": 1
-    })
-    order_obj.razorpay_order_id = razorpay_order['id']
+    try:
+        razorpay_order = razorpay_client.order.create({
+            "amount": int(final_amount * 100),
+            "currency": "INR",
+            "payment_capture": 1
+        })
+    except Exception as e:
+        logger.error(f"Razorpay order creation failed for user {user['_id']}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create payment order. Check Razorpay keys.")
+
+    # Assign razorpay_order_id after validation
+    order_obj.razorpay_order_id = razorpay_order['id'] 
+    
     doc = order_obj.model_dump()
     await db.orders.insert_one(doc)
     return {
@@ -673,16 +691,22 @@ async def verify_payment(payment: PaymentVerification, user: dict = Depends(get_
             'razorpay_payment_id': payment.razorpay_payment_id,
             'razorpay_signature': payment.razorpay_signature
         })
+        
+        now_iso = datetime.now(timezone.utc).isoformat()
+        
+        # FIX: Change status to 'processing' (not 'delivered') after successful payment
         await db.orders.update_one(
             {"id": payment.order_id},
             {"$set": {
                 "payment_id": payment.razorpay_payment_id,
-                "status": "processing",
-                "updated_at": datetime.now(timezone.utc).isoformat()
+                "status": "processing", # Correct initial status after payment
+                "updated_at": now_iso
             }}
         )
+        
         order = await db.orders.find_one({"id": payment.order_id})
         if order:
+            # Update inventory stock
             for item in order['items']:
                 product = await db.products.find_one({"id": item['product_id']})
                 if product:
@@ -694,8 +718,10 @@ async def verify_payment(payment: PaymentVerification, user: dict = Depends(get_
                         {"id": item['product_id']},
                         {"$set": {"variants": product['variants']}}
                     )
-        return {"success": True, "message": "Payment verified successfully"}
+                    
+        return {"success": True, "message": "Payment verified successfully, order is now processing."}
     except Exception as e:
+        logger.error(f"Payment verification failed for order {payment.order_id}: {str(e)}")
         raise HTTPException(status_code=400, detail=f"Payment verification failed: {str(e)}")
 
 @api_router.get("/orders/my-orders", response_model=List[Order])
@@ -704,16 +730,9 @@ async def get_my_orders(user: dict = Depends(get_current_user)):
     orders.sort(key=lambda x: x.get('created_at', ''), reverse=True)
     return orders
 
-@api_router.get("/orders", response_model=List[Order])
-async def get_all_orders(user: dict = Depends(verify_admin)): 
-    orders = await db.orders.find({}, {"_id": 0}).to_list(1000)
-    orders.sort(key=lambda x: x.get('created_at', ''), reverse=True)
-    return orders
-
 @api_router.put("/orders/{order_id}/status")
 async def update_order_status(order_id: str, update_data: OrderUpdateAdmin, user: dict = Depends(verify_admin)): 
-    # Use OrderUpdateAdmin model
-    valid_statuses = ["pending", "processing", "shipped", "delivered", "cancelled", "abandoned"] # MODIFIED
+    valid_statuses = ["pending", "processing", "shipped", "delivered", "cancelled", "abandoned"]
     if update_data.status not in valid_statuses:
         raise HTTPException(status_code=400, detail="Invalid status")
     
@@ -722,7 +741,6 @@ async def update_order_status(order_id: str, update_data: OrderUpdateAdmin, user
         "updated_at": datetime.now(timezone.utc).isoformat()
     }
     
-    # Only set tracking fields if status is 'shipped' or provided
     if update_data.status == 'shipped' or update_data.tracking_number is not None or update_data.courier is not None:
         update_fields['tracking_number'] = update_data.tracking_number
         update_fields['courier'] = update_data.courier
@@ -733,45 +751,34 @@ async def update_order_status(order_id: str, update_data: OrderUpdateAdmin, user
     )
     return {"message": "Order status and tracking updated successfully"}
 
-# NEW ENDPOINT: Check Abandoned Carts
 @api_router.post("/admin/check-abandoned-carts")
 async def check_abandoned_carts(user: dict = Depends(verify_admin)):
     """
     Identifies and marks 'pending' orders older than 2 hours as 'abandoned'.
-    Returns a list of newly abandoned orders for email processing.
     """
     time_limit = datetime.now(timezone.utc) - timedelta(hours=2)
     time_limit_iso = time_limit.isoformat()
     
-    # 1. Find orders that are still 'pending' and older than the time limit
     query = {
         "status": "pending",
         "created_at": {"$lte": time_limit_iso}
     }
     
-    # 2. Update these orders to 'abandoned'
-    update_data = {
-        "$set": {
-            "status": "abandoned",
-            "updated_at": datetime.now(timezone.utc).isoformat()
-        }
-    }
-    
-    # Fetch the orders first (for email data)
     abandoned_orders = await db.orders.find(query, {"_id": 0}).to_list(1000)
     
-    # Then update the status in the database
     if abandoned_orders:
         order_ids = [order['id'] for order in abandoned_orders]
+        update_data = {
+            "$set": {
+                "status": "abandoned",
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+        }
         await db.orders.update_many({"id": {"$in": order_ids}}, update_data)
         
-    return {
-        "message": f"Found and marked {len(abandoned_orders)} orders as abandoned.",
-        "abandoned_orders": abandoned_orders
-    }
+    return {"message": f"Found and marked {len(abandoned_orders)} orders as abandoned.", "abandoned_orders": abandoned_orders}
 
 
-# --- Analytics Routes ---
 @api_router.get("/analytics/dashboard")
 async def get_dashboard_analytics(user: dict = Depends(verify_admin)): 
     total_orders = await db.orders.count_documents({})
@@ -923,7 +930,7 @@ async def root():
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=os.environ.get('CORS_ORIGINS', 'http://localhost:3000').split(','),
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -932,14 +939,7 @@ app.add_middleware(
 app.include_router(api_router)
 app.include_router(auth_router)
 app.include_router(coupon_router)
-app.include_router(ticker_router)
-
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+app.include_router(ticker_router) 
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
