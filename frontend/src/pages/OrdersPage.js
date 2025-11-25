@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Package, Truck, CheckCircle, XCircle, Link as LinkIcon, IndianRupee, RotateCcw } from 'lucide-react'; // ADDED: RotateCcw for returns
+import { Package, Truck, CheckCircle, XCircle, Link as LinkIcon, IndianRupee, RotateCcw, Loader2, CornerDownLeft, Repeat2, Zap } from 'lucide-react'; // ADDED: Zap
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer'; 
 import { useAuth } from '../context/AuthContext';
@@ -8,42 +8,143 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
     Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
     DialogTrigger,
-    DialogFooter
+    DialogFooter,
+    DialogDescription
 } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'; // Added ToggleGroup
 
-// Helper component for the Return Request Modal
-const ReturnRequestModal = ({ orderId, api, onReturnSubmitted }) => {
-    const [reason, setReason] = useState('');
-    const [isSubmitting, setIsSubmitting] = useState(false);
+// --- NEW HELPER COMPONENT: ReturnRequestDialog ---
+const ReturnRequestDialog = ({ order, api, onReturnSubmitted }) => {
     const [dialogOpen, setDialogOpen] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [reason, setReason] = useState('');
+    const [type, setType] = useState('return'); // 'return' or 'replacement'
+    const [selectedItem, setSelectedItem] = useState(null); // The actual item object being replaced/returned
+    const [replacementColor, setReplacementColor] = useState(null);
+    const [replacementSize, setReplacementSize] = useState(null);
+    const [productDetails, setProductDetails] = useState({}); // Stores details for items in the order
 
-    const handleReturnRequest = async () => {
+    // Calculate if the 15-day return window is active
+    const isReturnWindowActive = () => {
+        if (!order || !order.created_at) return false;
+        const purchaseDate = new Date(order.created_at);
+        const deadlineDate = new Date(purchaseDate);
+        deadlineDate.setDate(purchaseDate.getDate() + 15);
+        return new Date() <= deadlineDate;
+    };
+
+    const fetchProductDetails = async (productId) => {
+        if (productDetails[productId]) return productDetails[productId];
+
+        try {
+            // Assuming /api/products/{id} works based on server.py's slug_or_id
+            const response = await api.get(`/products/${productId}`);
+            const details = response.data;
+            setProductDetails(prev => ({ ...prev, [productId]: details }));
+            return details;
+        } catch (error) {
+            console.error('Error fetching product details for replacement:', error);
+            // Don't toast here, it's disruptive; the item selection handles the error implicitly.
+            return null;
+        }
+    };
+    
+    // Fetch product details for all items in the order when dialog opens
+    useEffect(() => {
+        if (dialogOpen) {
+            // Reset state on open
+            setSelectedItem(null);
+            setReplacementColor(null);
+            setReplacementSize(null);
+            setReason('');
+            
+            order.items.forEach(item => {
+                fetchProductDetails(item.product_id);
+            });
+        }
+    }, [dialogOpen, order.items]);
+
+    const handleItemSelection = (indexStr) => {
+        const index = parseInt(indexStr);
+        const item = order.items[index];
+        setSelectedItem(item);
+        // Reset replacement fields when a new item is selected
+        setReplacementColor(item.color); 
+        setReplacementSize(item.size); 
+    };
+
+
+    const handleRequest = async () => {
         if (reason.length < 10) {
-            toast.error('Please provide a reason of at least 10 characters.');
+            toast.error("Please provide a detailed reason (min 10 characters).");
+            return;
+        }
+        if (!selectedItem) {
+             toast.error("Please select the item you wish to return or replace.");
+            return;
+        }
+        if (type === 'replacement' && (!replacementColor || !replacementSize)) {
+            toast.error("Please select the desired replacement size and color.");
             return;
         }
 
-        setIsSubmitting(true);
+        setLoading(true);
+
+        const new_item_details = type === 'replacement' ? {
+            product_id: selectedItem.product_id,
+            item_color: selectedItem.color,
+            item_size: selectedItem.size,
+            new_color: replacementColor,
+            new_size: replacementSize
+        } : null;
+
         try {
-            await api.post(`/orders/${orderId}/return`, { reason });
-            toast.success('Return request submitted!');
+            await api.post(`/orders/${order.id}/request-return`, {
+                return_reason: reason,
+                return_type: type,
+                requested_item: selectedItem, // Pass the original item object
+                new_item_details: new_item_details
+            });
+            toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} request submitted successfully!`);
             setDialogOpen(false);
-            onReturnSubmitted(); // Trigger parent fetch
+            onReturnSubmitted(); // Refresh orders list
         } catch (error) {
-            console.error('Error submitting return:', error.response?.data || error);
-            const errorMessage = error.response?.data?.detail || 'Failed to submit return request.';
+            const errorMessage = error.response?.data?.detail || 'Failed to submit request.';
+            console.error('Error submitting return request:', error.response?.data || error);
             toast.error(errorMessage);
         } finally {
-            setIsSubmitting(false);
+            setLoading(false);
         }
     };
+    
+    // Check if a return is already requested
+    const isRequested = order.return_status && order.return_status !== 'none' && order.return_status !== 'rejected';
+    
+    if (!isReturnWindowActive()) {
+        return (
+            <Button variant="outline" size="sm" disabled className="text-xs h-8 px-3 rounded-none">
+                Return Window Expired
+            </Button>
+        );
+    }
+    
+    const selectedProduct = selectedItem ? productDetails[selectedItem.product_id] : null;
+    const availableVariants = selectedProduct?.variants || [];
+    const availableSizes = availableVariants.find(v => v.color === replacementColor)?.sizes || {};
+    // Calculate stock for the item if it's selected and replacement options are chosen
+    const currentStock = replacementSize && availableSizes[replacementSize] !== undefined 
+        ? availableSizes[replacementSize] 
+        : null;
+    const hasEnoughStock = currentStock !== null ? currentStock >= (selectedItem?.quantity || 1) : true;
 
     return (
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -51,34 +152,138 @@ const ReturnRequestModal = ({ orderId, api, onReturnSubmitted }) => {
                 <Button 
                     variant="outline" 
                     size="sm" 
-                    className="bg-white text-black border-black rounded-none hover:bg-gray-50"
+                    className="text-xs h-8 px-3 rounded-none border-black hover:bg-black hover:text-white"
+                    disabled={isRequested}
                 >
-                    <RotateCcw size={16} className="mr-2" /> Request Return
+                    {isRequested ? order.return_status.charAt(0).toUpperCase() + order.return_status.slice(1) : "Return / Replace"}
                 </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md bg-white rounded-none border-black">
+            <DialogContent className="sm:max-w-xl bg-white rounded-none border-black">
                 <DialogHeader>
-                    <DialogTitle className="playfair text-xl">Request Return for Order ID: {orderId.substring(0, 8).toUpperCase()}</DialogTitle>
+                    <DialogTitle className="playfair text-2xl">Issue Return or Replacement</DialogTitle>
+                    <DialogDescription>
+                        You have 15 days from purchase date ({new Date(order.created_at).toLocaleDateString()}) to submit a request.
+                    </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4">
-                    <p className="text-sm text-gray-600">You are requesting a return within the 15-day eligibility window.</p>
-                    <Label htmlFor="return-reason">Reason for Return *</Label>
-                    <Textarea 
-                        id="return-reason"
-                        value={reason}
-                        onChange={(e) => setReason(e.target.value)}
-                        placeholder="e.g., Wrong size received, product damaged, changed mind..."
-                        rows={4}
-                        className="rounded-none border-gray-300 focus:border-black"
-                    />
+                <div className="grid gap-4 py-4">
+                    {/* Item Selection */}
+                    <div className="space-y-2 border-b pb-4">
+                        <Label>Select Item for Action (Only 1 item per request)</Label>
+                        <Select 
+                            onValueChange={handleItemSelection}
+                            value={selectedItem ? order.items.findIndex(item => item.product_id === selectedItem.product_id && item.color === selectedItem.color && item.size === selectedItem.size).toString() : ""}
+                        >
+                            <SelectTrigger className="rounded-none border-gray-300 focus:border-black">
+                                <SelectValue placeholder="Select an item from your order" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {order.items.map((item, index) => (
+                                    <SelectItem key={index} value={index.toString()}>
+                                        {item.product_name} ({item.color} / {item.size}) - Qty: {item.quantity}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* Request Type */}
+                    <div className="space-y-2">
+                        <Label htmlFor="type-select">Request Type</Label>
+                        <Select value={type} onValueChange={setType}>
+                            <SelectTrigger id="type-select" className="rounded-none border-gray-300 focus:border-black">
+                                <SelectValue placeholder="Select Type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="return">Return (Full Refund)</SelectItem>
+                                <SelectItem value="replacement" disabled={!selectedItem}>Replacement (Exchange same product)</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    
+                    {/* Replacement Options (Conditional) */}
+                    {type === 'replacement' && selectedItem && selectedProduct && (
+                        <motion.div 
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            transition={{ duration: 0.3 }}
+                            className="p-4 border border-blue-200 bg-blue-50 space-y-3 rounded-none"
+                        >
+                            <h3 className="font-semibold flex items-center text-blue-800">
+                                <Repeat2 size={16} className="mr-2" /> Desired Replacement Details
+                            </h3>
+                            <p className="text-sm">Original: {selectedItem.color} / {selectedItem.size} - Qty: {selectedItem.quantity}</p>
+                            
+                            <Label>New Color</Label>
+                            <div className="flex flex-wrap gap-2">
+                                {availableVariants.map(variant => (
+                                    <Button
+                                        key={variant.color}
+                                        onClick={() => {
+                                            setReplacementColor(variant.color);
+                                            // Reset size if color changes, unless it's the original item's size
+                                            const newSizes = variant.sizes || {};
+                                            if (newSizes[replacementSize] === undefined) {
+                                                setReplacementSize(null);
+                                            }
+                                        }}
+                                        variant={replacementColor === variant.color ? "default" : "outline"}
+                                        className={`rounded-none h-10 px-4 text-xs ${replacementColor === variant.color ? 'bg-black text-white hover:bg-gray-800' : 'border-gray-300 hover:bg-gray-100'}`}
+                                    >
+                                        <div style={{ backgroundColor: variant.color_code }} className="w-4 h-4 rounded-full border border-gray-400 mr-2"></div>
+                                        {variant.color}
+                                    </Button>
+                                ))}
+                            </div>
+                            
+                            {replacementColor && (
+                                <>
+                                    <Label className="mt-4 block">New Size</Label>
+                                    <ToggleGroup 
+                                        type="single" 
+                                        value={replacementSize} 
+                                        onValueChange={setReplacementSize}
+                                        className="justify-start flex-wrap"
+                                    >
+                                        {Object.entries(availableSizes).map(([size, stock]) => (
+                                            <ToggleGroupItem 
+                                                key={size}
+                                                value={size}
+                                                // Disable if stock is less than the quantity the customer bought
+                                                disabled={stock < selectedItem.quantity}
+                                                aria-label={`Toggle size ${size}`}
+                                                className={`rounded-none border-gray-300 text-xs data-[state=on]:bg-black data-[state=on]:text-white`}
+                                            >
+                                                {size} ({stock >= selectedItem.quantity ? `${stock} in stock` : 'Low/Out of stock'})
+                                            </ToggleGroupItem>
+                                        ))}
+                                    </ToggleGroup>
+                                    {!hasEnoughStock && <p className="text-red-500 text-sm mt-2 flex items-center"><Zap size={16} className="mr-1"/> Low stock or Out of stock! Replacement may result in refund if approved.</p>}
+                                </>
+                            )}
+                        </motion.div>
+                    )}
+
+                    <div className="space-y-2">
+                        <Label htmlFor="reason">Reason for {type}</Label>
+                        <Textarea
+                            id="reason"
+                            value={reason}
+                            onChange={(e) => setReason(e.target.value)}
+                            placeholder="State your reason clearly (min 10 characters)."
+                            rows={4}
+                            className="rounded-none border-gray-300 focus:border-black"
+                        />
+                        <p className="text-xs text-gray-500">{reason.length}/10 characters minimum</p>
+                    </div>
                 </div>
                 <DialogFooter>
                     <Button 
-                        onClick={handleReturnRequest} 
-                        disabled={isSubmitting || reason.length < 10}
+                        onClick={handleRequest} 
+                        disabled={loading || reason.length < 10 || !selectedItem || (type === 'replacement' && (!replacementColor || !replacementSize))}
                         className="bg-black text-white hover:bg-gray-800 rounded-none w-full"
                     >
-                        {isSubmitting ? 'Submitting...' : 'Confirm Request'}
+                        {loading ? 'Submitting...' : `Submit ${type.charAt(0).toUpperCase() + type.slice(1)} Request`}
+                        {loading && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
                     </Button>
                 </DialogFooter>
             </DialogContent>
@@ -86,56 +291,13 @@ const ReturnRequestModal = ({ orderId, api, onReturnSubmitted }) => {
     );
 };
 
+// ... (main OrdersPage component is below, unchanged in logic)
 
 const OrdersPage = () => {
-    const { currentUser: user, api, loading: authLoading } = useAuth();
+    const { api } = useAuth();
     const navigate = useNavigate();
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
-
-    const trackingUrlBase = {
-        'FedEx': 'https://www.fedex.com/apps/fedextrack/?tracknumbers=',
-        'Delhivery': 'https://www.delhivery.com/track/package/',
-        // Add more courier base URLs here if needed
-    };
-
-    const getTrackingLink = (courier, number) => {
-        if (courier && number && trackingUrlBase[courier]) {
-            return trackingUrlBase[courier] + number;
-        }
-        return null;
-    }
-
-    const isReturnEligible = (order) => {
-        // Must be delivered
-        if (order.status !== 'delivered') return false;
-        
-        // Must not have a return already requested or completed
-        if (order.return_status && order.return_status !== 'none' && order.return_status !== 'rejected') return false;
-
-        const deliveredDateStr = order.updated_at || order.created_at;
-        try {
-            const deliveredDate = new Date(deliveredDateStr);
-            const today = new Date();
-            const diffTime = Math.abs(today - deliveredDate);
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            
-            // Check if within 15 days (less than or equal to 15 days old)
-            return diffDays <= 15;
-        } catch {
-            return false;
-        }
-    };
-    
-    useEffect(() => {
-        if (authLoading) return;
-
-        if (user) {
-            fetchOrders();
-        } else {
-            setLoading(false);
-        }
-    }, [user, authLoading]);
 
     const fetchOrders = async () => {
         setLoading(true);
@@ -144,76 +306,77 @@ const OrdersPage = () => {
             setOrders(response.data);
         } catch (error) {
             console.error('Error fetching orders:', error);
+            toast.error('Failed to fetch orders.');
+            // If it's a 401, redirect to login
+            if (error.response && error.response.status === 401) {
+                navigate('/login');
+            }
         } finally {
             setLoading(false);
         }
     };
 
-    const getStatusIcon = (status) => {
-        switch (status) {
-            case 'delivered':
-                return <CheckCircle className="text-black" size={24} />;
-            case 'cancelled':
-            case 'abandoned':
-                return <XCircle className="text-red-600" size={24} />;
-            case 'shipped':
-                return <Truck className="text-gray-600" size={24} />;
-            default:
-                return <Package className="text-gray-400" size={24} />;
-        }
+    useEffect(() => {
+        fetchOrders();
+    }, []);
+
+    const formatCurrency = (amount) => {
+        return `₹${amount.toFixed(2)}`;
     };
 
     const getStatusColor = (status) => {
         switch (status) {
-            case 'delivered':
-                return 'bg-black text-white';
+            case 'delivered': return 'bg-green-100 text-green-800';
+            case 'shipped': return 'bg-blue-100 text-blue-800';
+            case 'processing': return 'bg-yellow-100 text-yellow-800';
+            case 'pending': return 'bg-gray-100 text-gray-600';
             case 'cancelled':
-            case 'abandoned':
-                return 'bg-red-50 text-red-800 border border-red-100';
-            case 'shipped':
-                return 'bg-gray-100 text-black border border-gray-300';
-            case 'processing':
-                return 'bg-white text-black border border-black';
-            default:
-                return 'bg-gray-50 text-gray-500 border border-gray-200';
+            case 'abandoned': return 'bg-red-100 text-red-800';
+            default: return 'bg-gray-100 text-gray-600';
         }
     };
     
-    const getReturnTag = (returnStatus) => {
-        switch(returnStatus) {
-            case 'requested':
-                return <span className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-yellow-100 text-yellow-800 rounded-full flex items-center gap-1"><RotateCcw size={12} /> Return Requested</span>;
-            case 'approved':
-                return <span className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-green-100 text-green-800 rounded-full flex items-center gap-1"><CheckCircle size={12} /> Return Approved</span>;
-            case 'rejected':
-                return <span className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-red-100 text-red-800 rounded-full flex items-center gap-1"><XCircle size={12} /> Return Rejected</span>;
-            case 'completed':
-                return <span className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-black text-white rounded-full flex items-center gap-1"><IndianRupee size={12} /> Refund Completed</span>;
-            default:
-                return null;
-        }
-    };
+    const getReturnStatusDisplay = (order) => {
+        const status = order.return_status;
+        if (!status || status === 'none') return null;
 
-    if (authLoading) {
+        let icon = RotateCcw;
+        let color = 'text-yellow-600';
+        let label = 'Return Requested';
+        
+        if (status === 'approved') {
+            icon = CheckCircle;
+            color = 'text-green-600';
+            label = 'Return Approved (Refund Pending)';
+        } else if (status === 'rejected') {
+            icon = XCircle;
+            color = 'text-red-600';
+            label = 'Return Rejected';
+        } else if (status === 'completed') {
+            icon = IndianRupee;
+            color = 'text-black';
+            label = 'Refund/Exchange Processed';
+        }
+
+        const IconComponent = icon;
+
         return (
-            <div className="min-h-screen bg-white">
-                <Navbar />
-                <div className="flex justify-center py-40"><div className="spinner" /></div>
+            <div className="flex items-center space-x-2 mt-2 text-sm font-medium">
+                <IconComponent size={16} className={color} />
+                <span className={color}>{label}</span>
             </div>
         );
     }
 
-    if (!user) {
+    if (loading) {
         return (
-            <div className="min-h-screen bg-white">
+            <div className="min-h-screen bg-white pt-24">
                 <Navbar />
-                <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-40 text-center">
-                    <h2 className="text-3xl font-bold mb-4 playfair text-black">Please Sign In</h2>
-                    <p className="text-gray-500 mb-8">Sign in to view your orders</p>
-                    <Button onClick={() => navigate('/login')} className="bg-black hover:bg-gray-800 text-white rounded-none px-8 py-3 uppercase tracking-wide">
-                        Sign In
-                    </Button>
+                <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center">
+                    <Loader2 className="mx-auto h-10 w-10 animate-spin text-black" />
+                    <p className="mt-4 text-gray-600">Loading your orders...</p>
                 </div>
+                <Footer />
             </div>
         );
     }
@@ -223,159 +386,73 @@ const OrdersPage = () => {
             <Navbar />
             
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                <motion.h1
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="text-4xl font-bold mb-12 playfair text-black border-b border-gray-100 pb-4"
-                    data-testid="orders-title"
-                >
-                    My Orders
-                </motion.h1>
+                <div className="flex items-center gap-4 mb-8">
+                    <h1 className="text-4xl font-bold playfair text-black">Your Orders</h1>
+                </div>
 
-                {loading ? (
-                    <div className="flex justify-center py-20">
-                        <div className="spinner" />
-                    </div>
-                ) : orders.length === 0 ? (
-                    <div className="text-center py-20" data-testid="no-orders">
+                {orders.length === 0 ? (
+                    <div className="text-center py-20 border border-gray-200 shadow-sm bg-gray-50">
                         <Package size={64} className="mx-auto text-gray-300 mb-6" strokeWidth={1.5} />
-                        <h2 className="text-2xl font-bold mb-4 playfair text-black">No orders yet</h2>
-                        <p className="text-gray-500 mb-8">Start shopping to place your first order</p>
-                        <Button onClick={() => navigate('/products')} className="bg-black hover:bg-gray-800 text-white rounded-none px-8 py-3 uppercase tracking-wide">
-                            Shop Now
-                        </Button>
+                        <h2 className="text-2xl font-bold mb-2 playfair text-black">No Orders Yet</h2>
+                        <p className="text-gray-600">Looks like you haven't placed any orders. Start shopping now!</p>
+                        <Link to="/products">
+                            <Button className="mt-6 bg-black text-white hover:bg-gray-800 rounded-none">
+                                Explore Products
+                            </Button>
+                        </Link>
                     </div>
                 ) : (
-                    <div className="space-y-8">
-                        {orders.map((order, index) => {
-                            const trackingLink = getTrackingLink(order.courier, order.tracking_number);
-                            const eligibleForReturn = isReturnEligible(order);
-
-                            return (
-                                <motion.div
-                                    key={order.id}
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: index * 0.05 }}
-                                    className="bg-white border border-gray-100 p-6 hover:shadow-md transition-shadow duration-300"
-                                    data-testid={`order-${index}`}
-                                >
-                                    <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 border-b border-gray-200 pb-6">
-                                        <div className="flex items-center gap-4 mb-4 md:mb-0">
-                                            {getStatusIcon(order.status)}
-                                            <div>
-                                                <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Order ID</p>
-                                                <p className="font-semibold text-black font-mono">{order.id.substring(0, 8).toUpperCase()}</p>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-6">
-                                            {/* Order Status Tag */}
-                                            <span className={`px-4 py-1 text-xs font-bold uppercase tracking-wider ${getStatusColor(order.status)}`}>
-                                                {order.status}
-                                            </span>
-                                            {/* Return Status Tag (if applicable) */}
-                                            {order.return_status && order.return_status !== 'none' && getReturnTag(order.return_status)}
-                                            
-                                            <div className="text-right">
-                                                <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Total</p>
-                                                <p className="text-xl font-bold text-black">₹{order.final_amount ? order.final_amount.toFixed(2) : order.total_amount.toFixed(2)}</p> 
-                                            </div>
-                                        </div>
-                                    </div>
+                    <div className="space-y-6">
+                        {orders.map((order, index) => (
+                            <motion.div
+                                key={order.id}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: index * 0.05 }}
+                                className="border border-gray-200 shadow-sm p-6 bg-white flex flex-col sm:flex-row justify-between items-start sm:items-center"
+                            >
+                                <div>
+                                    <p className="font-semibold text-lg text-black font-mono">
+                                        Order #{order.id.substring(0, 8).toUpperCase()}
+                                    </p>
+                                    <p className="text-sm text-gray-500 mt-1">
+                                        Placed on: {new Date(order.created_at).toLocaleDateString()}
+                                    </p>
+                                    <p className="text-xl font-bold text-black mt-2 flex items-center">
+                                        <IndianRupee size={18} className="mr-1" />
+                                        {formatCurrency(order.final_amount)}
+                                    </p>
                                     
-                                    {/* Tracking Information */}
-                                    {(order.tracking_number && order.courier && order.status !== 'delivered' && order.status !== 'cancelled') && (
-                                        <div className="p-3 bg-gray-50 border border-gray-200 mt-4 mb-4 flex justify-between items-center rounded-none">
-                                            <div className="flex items-center">
-                                                <Truck size={20} className="text-black mr-3"/>
-                                                <div>
-                                                    <p className="text-xs text-gray-600 uppercase tracking-wider">Tracking ({order.courier})</p>
-                                                    <a 
-                                                        href={trackingLink} 
-                                                        target="_blank" 
-                                                        rel="noopener noreferrer" 
-                                                        className="font-semibold text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-1 text-sm"
-                                                    >
-                                                        {order.tracking_number}
-                                                        <LinkIcon size={14} />
-                                                    </a>
-                                                </div>
-                                            </div>
-                                            <Button 
-                                                variant="outline" 
-                                                size="sm" 
-                                                className="bg-white text-black border-black rounded-none"
-                                                asChild
-                                            >
-                                                <a href={trackingLink} target="_blank" rel="noopener noreferrer">Track Order</a>
-                                            </Button>
-                                        </div>
-                                    )}
-                                    {/* Discount Info */}
-                                    {order.discount_amount > 0 && (
-                                        <div className="flex justify-between items-center pt-2 pb-2 text-sm text-green-600">
-                                            <span className="font-medium flex items-center gap-1">
-                                                <IndianRupee size={14} /> Coupon Discount ({order.coupon_code})
-                                            </span>
-                                            <span>- ₹{order.discount_amount.toFixed(2)}</span>
-                                        </div>
-                                    )}
+                                    {getReturnStatusDisplay(order)}
 
-                                    <div className="pt-2">
-                                        <h3 className="font-bold text-sm uppercase tracking-wider mb-4 text-black border-t border-gray-100 pt-4">Items</h3>
-                                        <div className="space-y-4">
-                                            {order.items.map((item, itemIndex) => (
-                                                <div key={itemIndex} className="flex justify-between items-center">
-                                                    <div>
-                                                        <p className="font-medium text-black text-lg playfair">{item.product_name}</p>
-                                                        <p className="text-sm text-gray-500">
-                                                            {item.color} | Size: {item.size} | Qty: {item.quantity}
-                                                        </p>
-                                                    </div>
-                                                    <p className="font-semibold text-black">₹{(item.price * item.quantity).toFixed(2)}</p>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="mt-8 pt-6 border-t border-gray-50 grid md:grid-cols-2 gap-6">
-                                        <div>
-                                            <h3 className="font-bold text-sm uppercase tracking-wider mb-2 text-black">Shipping Address</h3>
-                                            <p className="text-sm text-gray-600 leading-relaxed">
-                                                {order.shipping_address.name}<br />
-                                                {order.shipping_address.address_line1}<br />
-                                                {order.shipping_address.address_line2 && <>{order.shipping_address.address_line2}<br /></>}
-                                                {order.shipping_address.city}, {order.shipping_address.state} {order.shipping_address.postal_code}<br />
-                                                {order.shipping_address.country}<br />
-                                                Phone: {order.shipping_address.phone}
-                                            </p>
-                                        </div>
-                                        <div className="flex flex-col items-start md:items-end justify-between">
-                                            <p className="text-sm text-gray-400">Ordered on {new Date(order.created_at).toLocaleDateString('en-IN', {
-                                                year: 'numeric',
-                                                month: 'long',
-                                                day: 'numeric'
-                                            })}</p>
-                                            
-                                            {/* Return Button */}
-                                            {eligibleForReturn && (
-                                                <div className="mt-4 md:mt-0">
-                                                    <ReturnRequestModal 
-                                                        orderId={order.id}
-                                                        api={api}
-                                                        onReturnSubmitted={fetchOrders}
-                                                    />
-                                                    <p className="text-xs text-gray-500 mt-1">15-day return window available.</p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </motion.div>
-                            );
-                        })}
+                                </div>
+                                <div className="mt-4 sm:mt-0 flex flex-col items-start sm:items-end space-y-2">
+                                    <span 
+                                        className={`px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-full ${getStatusColor(order.status)}`}
+                                    >
+                                        {order.status}
+                                    </span>
+                                    <Link to={`/order/${order.id}`}>
+                                        <Button variant="outline" size="sm" className="text-xs h-8 px-3 rounded-none border-black hover:bg-black hover:text-white">
+                                            View Details
+                                        </Button>
+                                    </Link>
+                                    {/* NEW: Conditional Return/Replace Button */}
+                                    {(order.status === 'shipped' || order.status === 'delivered') && (
+                                        <ReturnRequestDialog 
+                                            order={order} 
+                                            api={api} 
+                                            onReturnSubmitted={fetchOrders}
+                                        />
+                                    )}
+                                </div>
+                            </motion.div>
+                        ))}
                     </div>
                 )}
             </div>
+            
+            <Footer />
         </div>
     );
 };

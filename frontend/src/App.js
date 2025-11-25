@@ -18,6 +18,7 @@ import CheckoutPage from './pages/CheckoutPage';
 import LoginPage from './pages/LoginPage';
 import ProfilePage from './pages/ProfilePage';
 import OrdersPage from './pages/OrdersPage';
+import OrderDetailsPage from './pages/OrderDetailsPage'; // <--- NEW IMPORT
 import WishlistPage from './pages/WishlistPage';
 
 // Admin Pages
@@ -81,6 +82,7 @@ function App() {
                       <Route path="/login" element={<LoginPage />} />
                       <Route path="/profile" element={<ProfilePage />} />
                       <Route path="/orders" element={<OrdersPage />} />
+                      <Route path="/order/:id" element={<OrderDetailsPage />} /> {/* <--- NEW ROUTE ADDED HERE */}
                       <Route path="/wishlist" element={<WishlistPage />} />
 
                       {/* Admin Routes */}
@@ -93,7 +95,7 @@ function App() {
                         <Route path="landing-page" element={<AdminLandingPage />} />
                         <Route path="coupons" element={<AdminCoupons />} />
                         <Route path="ticker" element={<AdminTicker />} />
-                        <Route path="customers" element={<AdminCustomers />} />   {/* <-- FIXED */}
+                        <Route path="customers" element={<AdminCustomers />} />
 
                         {/* Catch-all for /admin/* */}
                         <Route path="*" element={<Navigate to="/admin" />} />

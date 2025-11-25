@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, User, ShoppingCart, DollarSign, RotateCcw, XCircle, CheckCircle } from 'lucide-react';
+import { ArrowLeft, User, ShoppingCart, DollarSign, RotateCcw, XCircle, CheckCircle, Package, AlertTriangle, Repeat2, IndianRupee } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import { useAuth } from '../../context/AuthContext';
@@ -15,47 +15,148 @@ import {
     DialogHeader,
     DialogTitle,
     DialogTrigger,
-    DialogFooter
+    DialogFooter,
+    DialogDescription
 } from '../../components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Label } from '../../components/ui/label';
+import { Separator } from '../../components/ui/separator';
+
+// Helper function for coloring return status
+const getStatusColor = (s) => {
+    switch(s) {
+        case 'requested': return 'bg-yellow-100 text-yellow-800';
+        case 'approved': return 'bg-green-100 text-green-800';
+        case 'rejected': return 'bg-red-100 text-red-800';
+        case 'completed': return 'bg-black text-white';
+        default: return 'bg-gray-100 text-gray-600';
+    }
+};
 
 // Helper component for updating return status
 const ReturnStatusUpdater = ({ order, api, onUpdate }) => {
-    const [status, setStatus] = useState(order.return_status);
+    // Determine if it's a simple return or a replacement request
+    const isReplacement = order.return_reason?.startsWith('[REPLACEMENT]');
+    const [action, setAction] = useState(
+        order.return_status === 'approved' ? 'completed' : 
+        (isReplacement ? 'approve_exchange' : 'approve_return')
+    ); // Admin's selected action
     const [notes, setNotes] = useState('');
     const [loading, setLoading] = useState(false);
     const [dialogOpen, setDialogOpen] = useState(false);
+    const [productDetails, setProductDetails] = useState(null);
 
-    const handleUpdate = async () => {
+    const replacementRequest = order.replacement_request || {};
+    const originalItem = replacementRequest.original_item;
+    const requestedItem = replacementRequest;
+
+    useEffect(() => {
+        if (dialogOpen && isReplacement && originalItem && !productDetails) {
+            fetchProductDetails(originalItem.product_id);
+        }
+    }, [dialogOpen, isReplacement, originalItem]);
+
+    const fetchProductDetails = async (productId) => {
+        try {
+            // Assuming /api/products/{id} works based on server.py's slug_or_id
+            const response = await api.get(`/products/${productId}`);
+            setProductDetails(response.data);
+        } catch (error) {
+            console.error('Error fetching product details for replacement:', error);
+            toast.error('Failed to load product details for exchange check.');
+        }
+    };
+    
+    const getStock = () => {
+        if (!productDetails || !requestedItem.new_color || !requestedItem.new_size) return null;
+        
+        const variant = productDetails.variants.find(v => v.color === requestedItem.new_color);
+        return variant?.sizes[requestedItem.new_size] || 0;
+    };
+    
+    // Check if stock is available for the quantity the customer returned
+    const isStockAvailable = getStock() >= (originalItem?.quantity || 1);
+    
+    // --- MAIN ACTION HANDLER ---
+    const handleAction = async () => {
         setLoading(true);
         try {
-            // Correct API path: /api/admin/returns/{order_id}
-            await api.put(`/admin/returns/${order.id}`, { 
-                return_status: status,
-                admin_notes: notes 
-            });
-            toast.success(`Return updated to ${status.toUpperCase()}`);
+            let apiPath = `/admin/returns/${order.id}/action`;
+            let payload = {
+                action: action,
+                admin_notes: notes
+            };
+            
+            // Handle the final status update for Approved -> Completed
+            if (order.return_status === 'approved' && action === 'completed') {
+                apiPath = `/admin/returns/${order.id}`;
+                payload = { return_status: 'completed', admin_notes: notes };
+                await api.put(apiPath, payload);
+                toast.success(`Return updated to COMPLETED (Refund Processed)`);
+            } 
+            // Handle initial action (Approve/Decline/Exchange)
+            else if (order.return_status === 'requested') {
+                const response = await api.put(apiPath, payload);
+                toast.success(response.data.message);
+            } else {
+                 throw new Error("Invalid action for current return status.");
+            }
+            
             setDialogOpen(false);
             onUpdate();
         } catch (error) {
-            console.error('Error updating return:', error.response?.data || error);
-            toast.error('Failed to update return status.');
+            console.error('Error processing return action:', error.response?.data || error);
+            const errorMessage = error.response?.data?.detail || 'Failed to process return action.';
+            toast.error(errorMessage);
         } finally {
             setLoading(false);
         }
     };
-
-    const getStatusColor = (s) => {
-        switch(s) {
-            case 'requested': return 'bg-yellow-100 text-yellow-800';
-            case 'approved': return 'bg-green-100 text-green-800';
-            case 'rejected': return 'bg-red-100 text-red-800';
-            case 'completed': return 'bg-black text-white';
-            default: return 'bg-gray-100 text-gray-600';
-        }
-    };
     
+    // Simple state update for Approved/Completed transition
+    if (order.return_status === 'approved' || order.return_status === 'completed') {
+        return (
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                 <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" className={`rounded-none ${getStatusColor(order.return_status)}`}>
+                        {order.return_status.charAt(0).toUpperCase() + order.return_status.slice(1)}
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md bg-white rounded-none border-black">
+                    <DialogHeader>
+                        <DialogTitle className="playfair text-xl">Finalize Refund</DialogTitle>
+                        <DialogDescription>
+                            The request is already {order.return_status}. Use this to mark the refund as fully processed.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        <Label htmlFor="status-select">New Status</Label>
+                        <Select 
+                             value={action} 
+                             onValueChange={(v) => setAction(v)}
+                        >
+                            <SelectTrigger id="status-select" className="rounded-none border-gray-300 focus:border-black">
+                                <SelectValue placeholder="Select Status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="approved">Approved (Pending Refund)</SelectItem>
+                                <SelectItem value="completed">Completed (Refund Processed)</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <Label htmlFor="admin-notes">Admin Notes</Label>
+                        <Textarea id="admin-notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Add notes for final processing..." rows={3} className="rounded-none border-gray-300 focus:border-black"/>
+                    </div>
+                    <DialogFooter>
+                        <Button onClick={handleAction} disabled={loading} className="bg-black text-white hover:bg-gray-800 rounded-none w-full">
+                            {loading ? 'Saving...' : 'Update Status'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        );
+    }
+    
+    // Primary "Requested" status handling
     return (
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
@@ -63,45 +164,79 @@ const ReturnStatusUpdater = ({ order, api, onUpdate }) => {
                     {order.return_status.charAt(0).toUpperCase() + order.return_status.slice(1)}
                 </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md bg-white rounded-none border-black">
+            <DialogContent className="max-w-xl bg-white rounded-none border-black">
                 <DialogHeader>
-                    <DialogTitle className="playfair text-xl">Update Return Status</DialogTitle>
+                    <DialogTitle className="playfair text-xl">Process Return Request</DialogTitle>
+                    <DialogDescription>Order ID: {order.id.substring(0, 8).toUpperCase()}</DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4">
-                    <p className="text-sm text-gray-600">Order ID: {order.id.substring(0, 8).toUpperCase()}</p>
-                    <p className="text-sm font-semibold">Customer: {order.user_email}</p>
-                    <p className="text-sm text-gray-600 border-b border-gray-200 pb-2">Reason: {order.return_reason || 'N/A'}</p>
 
-                    <Label htmlFor="status-select">New Status</Label>
-                    <Select value={status} onValueChange={setStatus}>
-                        <SelectTrigger id="status-select" className="rounded-none border-gray-300 focus:border-black">
-                            <SelectValue placeholder="Select Status" />
+                <div className="space-y-4">
+                    <div className="p-3 border bg-gray-50 text-sm">
+                        <p className="font-semibold">Customer: {order.user_email}</p>
+                        <p className="mt-1">Reason: <span className="font-medium text-gray-700">{order.return_reason || 'N/A'}</span></p>
+                    </div>
+
+                    {/* Replacement Details View (Conditional) */}
+                    {isReplacement && originalItem && (
+                        <div className="border border-blue-200 p-4 space-y-2 bg-blue-50">
+                            <h3 className="font-bold text-blue-800 flex items-center"><Repeat2 size={16} className="mr-2"/> Replacement Request</h3>
+                            <p className="text-sm">Original Item: <span className="font-mono">{originalItem.product_name}</span> ({originalItem.color} / {originalItem.size}) x {originalItem.quantity}</p>
+                            <p className="text-sm font-semibold">Requested: {requestedItem.new_color} / {requestedItem.new_size}</p>
+                            <Separator className="bg-blue-300 my-2" />
+                            <div className={`p-2 text-sm font-medium flex items-center ${isStockAvailable ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                {isStockAvailable ? (
+                                    <> <CheckCircle size={16} className="mr-2"/> IN STOCK: {getStock()} available for replacement.</>
+                                ) : (
+                                    <> <AlertTriangle size={16} className="mr-2"/> OUT OF STOCK: Cannot fulfill exchange. Must initiate refund.</>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                    
+                    <Separator />
+                    
+                    <Label htmlFor="admin-action-select">Admin Action</Label>
+                    <Select value={action} onValueChange={setAction}>
+                        <SelectTrigger id="admin-action-select" className="rounded-none border-gray-300 focus:border-black">
+                            <SelectValue placeholder="Select Action" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="requested">Requested</SelectItem>
-                            <SelectItem value="approved">Approved (Issue Refund)</SelectItem>
-                            <SelectItem value="rejected">Rejected</SelectItem>
-                            <SelectItem value="completed">Completed (Refund Processed)</SelectItem>
+                            {/* Standard Return Options */}
+                            <SelectItem value="approve_return">Approve Return (Issue Refund)</SelectItem>
+                            <SelectItem value="decline">Decline Request</SelectItem>
+                            
+                            {/* Replacement Options (Conditional) */}
+                            {isReplacement && (
+                                <>
+                                    <Separator className="my-1"/>
+                                    <SelectItem value="approve_exchange" disabled={!isStockAvailable}>
+                                        Approve Exchange & Reissue Order
+                                    </SelectItem>
+                                    <SelectItem value="refund_unavailable" disabled={isStockAvailable}>
+                                        Initiate Refund (Replacement Not Available)
+                                    </SelectItem>
+                                </>
+                            )}
                         </SelectContent>
                     </Select>
 
-                    <Label htmlFor="admin-notes">Admin Notes (Optional)</Label>
+                    <Label htmlFor="admin-notes">Admin Notes (Required for Decline)</Label>
                     <Textarea
                         id="admin-notes"
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
-                        placeholder="Add notes for processing the return/refund..."
+                        placeholder="Add notes for the customer (e.g., reason for decline, next steps for return)."
                         rows={3}
                         className="rounded-none border-gray-300 focus:border-black"
                     />
                 </div>
                 <DialogFooter>
                     <Button 
-                        onClick={handleUpdate} 
-                        disabled={loading}
-                        className="bg-black text-white hover:bg-gray-800 rounded-none w-full"
+                        onClick={handleAction} 
+                        disabled={loading || (action === 'decline' && notes.length < 5)}
+                        className={`text-white hover:bg-gray-800 rounded-none w-full ${action === 'decline' ? 'bg-red-600 hover:bg-red-700' : 'bg-black'}`}
                     >
-                        {loading ? 'Saving...' : 'Save Changes'}
+                        {loading ? 'Processing...' : `Execute Action: ${action.replace('_', ' ').toUpperCase()}`}
                     </Button>
                 </DialogFooter>
             </DialogContent>
@@ -274,6 +409,7 @@ const AdminCustomers = () => {
                                                         {order.return_reason || 'N/A'}
                                                     </td>
                                                     <td className="py-4 px-6 text-right">
+                                                        {/* FIX: getStatusColor is now defined and accessible */}
                                                         <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-full ${getStatusColor(order.return_status)}`}>
                                                            {order.return_status}
                                                         </span>

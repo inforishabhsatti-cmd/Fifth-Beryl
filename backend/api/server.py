@@ -48,7 +48,7 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7 # 7 days
 FRONTEND_URL = os.environ.get('REACT_APP_URL', 'http://localhost:3000')
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated=["auto"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 security = HTTPBearer()
 # --- END AUTH CONFIG ---
@@ -281,21 +281,40 @@ class Order(BaseModel):
     status: str = Field("pending", pattern="^(pending|processing|shipped|delivered|cancelled|abandoned)$")
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-    # ADDED: Fields for Return Management (Expected by AdminCustomers.js)
+    # Fields for Return Management
     return_status: Optional[str] = Field("none", pattern="^(none|requested|approved|rejected|completed)$")
     return_reason: Optional[str] = None
     return_request_date: Optional[str] = None
     admin_notes: Optional[str] = None
+    # NEW: Store customer's replacement request details
+    replacement_request: Optional[Dict[str, Any]] = None
 
 class OrderUpdateAdmin(BaseModel):
     status: str = Field(..., pattern="^(pending|processing|shipped|delivered|cancelled|abandoned)$")
     tracking_number: Optional[str] = None
     courier: Optional[str] = None
 
-# ADDED MODEL: For Admin Return Status Update
+# ADDED MODEL: For Admin Return Status Update (now only for simple status)
 class ReturnUpdateAdmin(BaseModel):
     return_status: str = Field(..., pattern="^(requested|approved|rejected|completed)$")
     admin_notes: Optional[str] = None
+
+# NEW MODEL: Details about the item the customer wants to replace/return
+class RequestedReturnItem(BaseModel):
+    product_id: str
+    item_color: str
+    item_size: str
+    new_color: Optional[str] = None
+    new_size: Optional[str] = None
+    
+# UPDATED MODEL: For Customer Return Request
+class CustomerReturnRequest(BaseModel):
+    return_reason: str = Field(..., min_length=10)
+    return_type: str = Field(..., pattern="^(return|replacement)$") 
+    # Use Dict[str, Any] to accommodate full item object for safety
+    requested_item: Dict[str, Any] = Field(..., description="The original order item details.")
+    # New replacement details only for 'replacement' type
+    new_item_details: Optional[RequestedReturnItem] = None 
 
 
 class OrderCreate(BaseModel):
@@ -374,6 +393,11 @@ class TickerUpdate(BaseModel):
     
 class CleanupRequest(BaseModel):
     collections: List[str] = Field(..., description="List of collection names to clear.")
+    
+# NEW MODEL: Admin Action for Returns/Exchanges
+class AdminReturnAction(BaseModel):
+    action: str = Field(..., pattern="^(approve_return|approve_exchange|decline|refund_unavailable)$", description="Admin decision")
+    admin_notes: Optional[str] = None
 
 # --- END MODELS ---
 
@@ -740,6 +764,60 @@ async def get_my_orders(user: dict = Depends(get_current_user)):
     orders.sort(key=lambda x: x.get('created_at', ''), reverse=True)
     return orders
 
+# ADDED ENDPOINT: Fixes 404 for AdminOrders.js (GET /api/orders)
+@api_router.get("/orders", response_model=List[Order])
+async def get_all_orders(user: dict = Depends(verify_admin)): 
+    orders = await db.orders.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    return orders
+
+@api_router.post("/orders/{order_id}/request-return")
+async def request_return_or_replacement(
+    order_id: str, 
+    request_data: CustomerReturnRequest, 
+    user: dict = Depends(get_current_user)
+):
+    now_iso = datetime.now(timezone.utc).isoformat()
+    
+    order = await db.orders.find_one({"id": order_id})
+
+    if not order or order['user_id'] != user['_id']:
+        raise HTTPException(status_code=404, detail="Order not found or access denied")
+
+    # Check the 15-day window:
+    order_date = datetime.fromisoformat(order['created_at'])
+    if datetime.now(timezone.utc) - order_date > timedelta(days=15):
+        raise HTTPException(status_code=400, detail="Return window expired (15 days maximum)")
+
+    # Check if a return is already requested or completed
+    current_status = order.get('return_status', 'none')
+    if current_status != 'none' and current_status != 'rejected':
+        raise HTTPException(status_code=400, detail=f"Return is already {current_status}")
+
+    # For simplicity, we use the same return_status field for both return and replacement requests
+    update_fields = {
+        "return_status": "requested",
+        # Prefix the reason with the type for admin clarity
+        "return_reason": f"[{request_data.return_type.upper()}] - {request_data.return_reason}",
+        "return_request_date": now_iso,
+        "updated_at": now_iso
+    }
+    
+    # Store replacement details if it's an exchange request
+    if request_data.return_type == 'replacement' and request_data.new_item_details:
+        update_fields["replacement_request"] = request_data.new_item_details.model_dump()
+        update_fields["replacement_request"]["original_item"] = request_data.requested_item
+    else:
+        # Clear any old replacement request data for returns
+        update_fields["replacement_request"] = None
+
+
+    await db.orders.update_one(
+        {"id": order_id},
+        {"$set": update_fields}
+    )
+    
+    return {"message": "Return/Replacement request submitted successfully.", "order_id": order_id}
+
 @api_router.put("/orders/{order_id}/status")
 async def update_order_status(order_id: str, update_data: OrderUpdateAdmin, user: dict = Depends(verify_admin)): 
     valid_statuses = ["pending", "processing", "shipped", "delivered", "cancelled", "abandoned"]
@@ -760,6 +838,218 @@ async def update_order_status(order_id: str, update_data: OrderUpdateAdmin, user
         {"$set": update_fields}
     )
     return {"message": "Order status and tracking updated successfully"}
+
+# NEW ADMIN ACTION ENDPOINT: Handles Approve/Decline/Reissue/Refund
+@api_router.put("/admin/returns/{order_id}/action")
+async def process_admin_return_action(order_id: str, action_data: AdminReturnAction, user: dict = Depends(verify_admin)):
+    now_iso = datetime.now(timezone.utc).isoformat()
+    
+    order = await db.orders.find_one({"id": order_id})
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+        
+    if order.get('return_status') != 'requested':
+        # Allow action if the previous step was 'approved' and the current action is 'completed'
+        if order.get('return_status') == 'approved' and action_data.action == 'completed':
+            return await update_return_status(order_id, ReturnUpdateAdmin(return_status='completed', admin_notes=action_data.admin_notes), user)
+        
+        raise HTTPException(status_code=400, detail="Return is not in 'requested' status.")
+        
+    update_fields = {
+        "admin_notes": action_data.admin_notes,
+        "updated_at": now_iso
+    }
+    message = "Action processed."
+    
+    if action_data.action == 'decline':
+        update_fields["return_status"] = "rejected"
+        message = f"Return for order {order_id} declined."
+    
+    elif action_data.action == 'approve_return':
+        update_fields["return_status"] = "approved"
+        # Since this is a simple return, return the inventory of the original items
+        for item in order['items']:
+            product = await db.products.find_one({"id": item['product_id']})
+            if product:
+                for variant in product['variants']:
+                    if variant['color'] == item['color']:
+                        if item['size'] in variant['sizes']:
+                            variant['sizes'][item['size']] = variant['sizes'].get(item['size'], 0) + item['quantity']
+                await db.products.update_one(
+                    {"id": item['product_id']},
+                    {"$set": {"variants": product['variants']}}
+                )
+        message = f"Return for order {order_id} approved. Inventory restocked. Initiate refund."
+
+    elif action_data.action in ['approve_exchange', 'refund_unavailable']:
+        req = order.get('replacement_request')
+        if not req:
+            raise HTTPException(status_code=400, detail="Missing replacement details for exchange action.")
+            
+        original_item = req.get('original_item')
+        new_color = req.get('new_color')
+        new_size = req.get('new_size')
+        product_id = req.get('product_id')
+
+        # 1. Update inventory: Return the original item's stock
+        product = await db.products.find_one({"id": product_id})
+        if product:
+            for variant in product['variants']:
+                if variant['color'] == original_item['color']:
+                    variant['sizes'][original_item['size']] = variant['sizes'].get(original_item['size'], 0) + original_item['quantity']
+                    break
+        
+        # 2. Check stock for the new item (only for approve_exchange)
+        is_available = True
+        if action_data.action == 'approve_exchange':
+            is_available = False
+            for variant in product['variants']:
+                if variant['color'] == new_color:
+                    if variant['sizes'].get(new_size, 0) >= original_item['quantity']:
+                        is_available = True
+                        # Deduct stock for the new item
+                        variant['sizes'][new_size] -= original_item['quantity']
+                        break
+        
+        if product:
+            await db.products.update_one({"id": product_id}, {"$set": {"variants": product['variants']}})
+
+
+        if action_data.action == 'refund_unavailable' or not is_available:
+            update_fields["return_status"] = "approved" # Approved for refund
+            update_fields["return_reason"] += " [EXCHANGE FAILED - INVENTORY ISSUE]"
+            message = f"Exchange for order {order_id} failed due to inventory. Initiated refund process."
+            
+        elif action_data.action == 'approve_exchange' and is_available:
+            # 3. Create a new replacement order (zero value for simplicity of payment flow)
+            new_items = [{
+                "product_id": product_id,
+                "product_name": original_item['product_name'],
+                "color": new_color,
+                "size": new_size,
+                "quantity": original_item['quantity'],
+                "price": original_item['price'] # Use original price for zero-cost exchange
+            }]
+            
+            # Find all relevant data from the original order for the new replacement order
+            replacement_order_data = order.copy()
+            del replacement_order_data['_id'] # Remove MongoDB ID
+            
+            replacement_order_data['id'] = str(uuid.uuid4())
+            replacement_order_data['items'] = new_items
+            replacement_order_data['total_amount'] = sum(item['price'] * item['quantity'] for item in new_items)
+            replacement_order_data['discount_amount'] = replacement_order_data['total_amount'] - replacement_order_data['final_amount']
+            replacement_order_data['final_amount'] = 0.0 # Exchange is zero-cost
+            
+            replacement_order_data['status'] = "processing" 
+            replacement_order_data['created_at'] = now_iso
+            replacement_order_data['updated_at'] = now_iso
+            replacement_order_data['coupon_code'] = None
+            replacement_order_data['payment_id'] = None
+            replacement_order_data['razorpay_order_id'] = None
+            replacement_order_data['tracking_number'] = None
+            replacement_order_data['courier'] = None
+            
+            replacement_order_data['return_status'] = "none" # Reset return status
+            replacement_order_data['return_reason'] = f"REPLACEMENT for Order {order_id}"
+            replacement_order_data['replacement_request'] = None
+            replacement_order_data['admin_notes'] = f"Reissued as replacement for {order_id}"
+            
+            replacement_order = Order(**replacement_order_data)
+
+            await db.orders.insert_one(replacement_order.model_dump())
+            
+            update_fields["return_status"] = "completed"
+            update_fields["admin_notes"] = f"Replacement Order Created: #{replacement_order.id[:8].upper()}. {action_data.admin_notes or ''}"
+            message = f"Exchange approved. New replacement order created: #{replacement_order.id[:8].upper()}"
+
+    await db.orders.update_one({"id": order_id}, {"$set": update_fields})
+    return {"message": message, "new_status": update_fields.get("return_status")}
+
+
+@api_router.put("/admin/returns/{order_id}")
+async def update_return_status(order_id: str, update_data: ReturnUpdateAdmin, user: dict = Depends(verify_admin)):
+    # Simple status update (e.g., changing Approved to Completed (Refund Processed))
+    now_iso = datetime.now(timezone.utc).isoformat()
+    
+    existing_order = await db.orders.find_one({"id": order_id})
+    if not existing_order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    update_fields = {
+        "return_status": update_data.return_status,
+        "admin_notes": update_data.admin_notes,
+        "updated_at": now_iso
+    }
+    
+    await db.orders.update_one(
+        {"id": order_id},
+        {"$set": update_fields}
+    )
+    return {"message": f"Return status for order {order_id} updated to {update_data.return_status}"}
+
+
+# --- Admin Endpoint for Customer Analytics (Fixes 404 in AdminCustomers.js) ---
+@api_router.get("/admin/users")
+async def get_user_analytics(user: dict = Depends(verify_admin)):
+    users_cursor = db.users.find({}, {"hashed_password": 0})
+    all_users = await users_cursor.to_list(10000)
+    
+    orders_cursor = db.orders.find({})
+    all_orders = await orders_cursor.to_list(10000)
+    
+    user_analytics = []
+    
+    for u in all_users:
+        user_id = u['_id']
+        name = u.get('name', 'N/A')
+        email = u['email']
+        
+        user_orders = [o for o in all_orders if o.get('user_id') == user_id]
+        
+        total_spent = 0.0
+        order_count = 0
+        abandoned_cart_count = 0
+        return_request_count = 0
+        
+        for order in user_orders:
+            status = order.get('status', 'pending')
+            
+            # Count successful orders for total spent/order count
+            if status in ["processing", "shipped", "delivered"]:
+                total_spent += order.get('final_amount', 0.0)
+                order_count += 1
+            elif status == "abandoned":
+                abandoned_cart_count += 1
+                
+            # Count active return requests (requested or approved status)
+            return_status = order.get('return_status')
+            if return_status in ["requested", "approved"]:
+                return_request_count += 1
+
+        user_analytics.append({
+            "user_id": user_id,
+            "name": name,
+            "email": email,
+            "total_spent": total_spent,
+            "order_count": order_count,
+            "abandoned_cart_count": abandoned_cart_count,
+            "return_request_count": return_request_count
+        })
+        
+    user_analytics.sort(key=lambda x: x['total_spent'], reverse=True)
+    
+    return user_analytics
+
+
+# ADDED ENDPOINT: Required for the Returns tab in AdminCustomers.js
+@api_router.get("/admin/returns")
+async def get_all_return_requests(user: dict = Depends(verify_admin)):
+    # Find orders with active or recently processed return statuses
+    query = {"return_status": {"$in": ["requested", "approved", "rejected", "completed"]}}
+    returns = await db.orders.find(query, {"_id": 0}).sort("return_request_date", -1).to_list(1000)
+    return returns
+
 
 @api_router.post("/admin/check-abandoned-carts")
 async def check_abandoned_carts(user: dict = Depends(verify_admin)):
@@ -827,89 +1117,6 @@ async def get_inventory_analytics(user: dict = Depends(verify_admin)):
             "variants": product.get('variants', [])
         })
     return inventory_data
-
-# ADDED ENDPOINT: Fixes 404 for fetching customer analytics (Used by AdminCustomers.js)
-@api_router.get("/admin/users")
-async def get_user_analytics(user: dict = Depends(verify_admin)):
-    users_cursor = db.users.find({}, {"hashed_password": 0})
-    all_users = await users_cursor.to_list(10000)
-    
-    orders_cursor = db.orders.find({})
-    all_orders = await orders_cursor.to_list(10000)
-    
-    user_analytics = []
-    
-    for u in all_users:
-        user_id = u['_id']
-        name = u.get('name', 'N/A')
-        email = u['email']
-        
-        user_orders = [o for o in all_orders if o.get('user_id') == user_id]
-        
-        total_spent = 0.0
-        order_count = 0
-        abandoned_cart_count = 0
-        return_request_count = 0
-        
-        for order in user_orders:
-            status = order.get('status', 'pending')
-            
-            # Count successful orders for total spent/order count
-            if status in ["processing", "shipped", "delivered"]:
-                total_spent += order.get('final_amount', 0.0)
-                order_count += 1
-            elif status == "abandoned":
-                abandoned_cart_count += 1
-                
-            # Count active return requests (requested or approved status)
-            return_status = order.get('return_status')
-            if return_status in ["requested", "approved"]:
-                return_request_count += 1
-
-        user_analytics.append({
-            "user_id": user_id,
-            "name": name,
-            "email": email,
-            "total_spent": total_spent,
-            "order_count": order_count,
-            "abandoned_cart_count": abandoned_cart_count,
-            "return_request_count": return_request_count
-        })
-        
-    user_analytics.sort(key=lambda x: x['total_spent'], reverse=True)
-    
-    return user_analytics
-
-
-# ADDED ENDPOINT: Required for the Returns tab in AdminCustomers.js
-@api_router.get("/admin/returns")
-async def get_all_return_requests(user: dict = Depends(verify_admin)):
-    # Find orders with active or recently processed return statuses
-    query = {"return_status": {"$in": ["requested", "approved", "rejected", "completed"]}}
-    returns = await db.orders.find(query, {"_id": 0}).sort("return_request_date", -1).to_list(1000)
-    return returns
-
-
-# ADDED ENDPOINT: Required for updating return status in ReturnStatusUpdater component
-@api_router.put("/admin/returns/{order_id}")
-async def update_return_status(order_id: str, update_data: ReturnUpdateAdmin, user: dict = Depends(verify_admin)):
-    now_iso = datetime.now(timezone.utc).isoformat()
-    
-    existing_order = await db.orders.find_one({"id": order_id})
-    if not existing_order:
-        raise HTTPException(status_code=404, detail="Order not found")
-
-    update_fields = {
-        "return_status": update_data.return_status,
-        "admin_notes": update_data.admin_notes,
-        "updated_at": now_iso
-    }
-    
-    await db.orders.update_one(
-        {"id": order_id},
-        {"$set": update_fields}
-    )
-    return {"message": f"Return status for order {order_id} updated to {update_data.return_status}"}
 
 # --- Landing Page Routes ---
 @api_router.get("/landing-page")
