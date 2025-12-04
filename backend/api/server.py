@@ -1243,4 +1243,4 @@ app.include_router(ticker_router)
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
-    client.close()
+    client.close()    
