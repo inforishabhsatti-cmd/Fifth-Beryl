@@ -87,7 +87,8 @@ const ProductsPage = () => {
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1}
                 variant="outline"
-                className="rounded-none border-black hover:bg-black hover:text-white"
+                // CHANGED: border-black/hover:bg-black/hover:text-white to border-foreground/hover:bg-foreground/hover:text-background
+                className="rounded-none border-foreground hover:bg-foreground hover:text-background"
             >
                 Previous
             </Button>
@@ -98,7 +99,8 @@ const ProductsPage = () => {
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
                 variant="outline"
-                className="rounded-none border-black hover:bg-black hover:text-white"
+                // CHANGED: border-black/hover:bg-black/hover:text-white to border-foreground/hover:bg-foreground/hover:text-background
+                className="rounded-none border-foreground hover:bg-foreground hover:text-background"
             >
                 Next
             </Button>
@@ -113,7 +115,8 @@ const ProductsPage = () => {
   }
 
   return (
-    <div className="min-h-screen pt-32 bg-white"> 
+    // CHANGED: bg-white to bg-background (Vanilla)
+    <div className="min-h-screen pt-32 bg-background"> 
       
       <Helmet>
         <title>Shop All Premium Shirts | Fifth Beryl Collection</title>
@@ -129,7 +132,8 @@ const ProductsPage = () => {
           animate={{ opacity: 1, y: 0 }}
           className="mb-12 border-b border-gray-100 pb-8"
         >
-          <h1 className="text-5xl font-bold mb-3 playfair text-black">The Collection</h1>
+          {/* CHANGED: text-black to text-foreground (Red-Brown) */}
+          <h1 className="text-5xl font-bold mb-3 playfair text-foreground">The Collection</h1>
           <p className="text-gray-500">Shop all {totalProducts} shirts available</p>
         </motion.div>
 
@@ -143,7 +147,8 @@ const ProductsPage = () => {
                   placeholder="Search products..."
                   value={searchTerm}
                   onChange={handleSearchChange}
-                  className="pl-10 border-gray-300 focus:border-black rounded-none"
+                  // CHANGED: focus:border-black to focus:border-foreground
+                  className="pl-10 border-gray-300 focus:border-foreground rounded-none"
                   data-testid="search-input"
                 />
             </div>
@@ -152,7 +157,10 @@ const ProductsPage = () => {
           <div className="flex items-center gap-3">
             <Label htmlFor="sort" className="text-sm text-gray-700">Sort By:</Label>
             <Select value={sortBy} onValueChange={handleSortChange}>
-              <SelectTrigger id="sort" className="w-full sm:w-[180px] rounded-none border-gray-300 focus:border-black">
+              <SelectTrigger id="sort" 
+                // CHANGED: focus:border-black to focus:border-foreground
+                className="w-full sm:w-[180px] rounded-none border-gray-300 focus:border-foreground"
+              >
                 <SelectValue placeholder="Sort Order" />
               </SelectTrigger>
               <SelectContent>
@@ -174,7 +182,8 @@ const ProductsPage = () => {
         ) : products.length === 0 ? (
           <div className="text-center py-20">
             <p className="text-xl text-gray-600">No products found {debouncedSearchTerm && `matching "${debouncedSearchTerm}"`}.</p>
-            {debouncedSearchTerm && <Button onClick={handleClearSearch} className="mt-4 bg-black text-white rounded-none">Clear Search</Button>}
+            {/* Uses default variant (Vanilla Button) */}
+            {debouncedSearchTerm && <Button onClick={handleClearSearch} className="mt-4 rounded-none">Clear Search</Button>}
           </div>
         ) : (
           <>

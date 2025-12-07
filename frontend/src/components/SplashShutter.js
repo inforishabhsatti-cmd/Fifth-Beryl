@@ -57,7 +57,7 @@ const SplashShutter = ({ onComplete }) => {
         left: 0;
         width: 100%;
         height: 100%; 
-        background-color: #000; /* Pure black shutter */
+        background-color: #6F4E37; /* CHANGED TO COFFEE */
         display: flex;
         align-items: center;
         justify-content: center;

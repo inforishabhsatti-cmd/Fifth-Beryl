@@ -32,7 +32,8 @@ const TickerLabel = ({ position }) => {
 
   return (
     <div
-      className={`w-full overflow-hidden whitespace-nowrap bg-black text-white z-50 ${
+      // CHANGED: bg-black text-white to bg-foreground text-background (Brown background, Vanilla text)
+      className={`w-full overflow-hidden whitespace-nowrap bg-foreground text-background z-50 ${
         isTop ? "fixed top-0" : ""
       }`}
       style={{ left: 0 }}

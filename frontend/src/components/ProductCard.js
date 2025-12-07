@@ -99,7 +99,8 @@ const ProductCard = ({ product, index }) => {
     >
       <motion.div
         whileHover={{ y: -8 }}
-        className="relative overflow-hidden bg-white border border-gray-100 hover:border-black hover:shadow-2xl transition-all duration-300"
+        // CHANGED: bg-white/hover:border-black to bg-background/hover:border-foreground
+        className="relative overflow-hidden bg-background border border-gray-100 hover:border-foreground hover:shadow-2xl transition-all duration-300"
       >
         {/* Image Container */}
         <div className="relative overflow-hidden aspect-[4/5] bg-gray-50">
@@ -125,7 +126,10 @@ const ProductCard = ({ product, index }) => {
           {/* Badges */}
           <div className="absolute top-3 left-3 flex flex-col gap-2 z-20">
             {product.featured && (
-              <div className="bg-black text-white px-3 py-1 text-[10px] uppercase tracking-widest font-bold flex items-center gap-1">
+              <div 
+                // CHANGED: bg-black text-white to bg-foreground text-background (Brown Badge, Vanilla Text)
+                className="bg-foreground text-background px-3 py-1 text-[10px] uppercase tracking-widest font-bold flex items-center gap-1"
+              >
                 <Sparkles size={10} />
                 Featured
               </div>
@@ -141,13 +145,15 @@ const ProductCard = ({ product, index }) => {
           <motion.button
             initial={{ opacity: 0 }}
             animate={{ opacity: isHovered || isWishlisted ? 1 : 0 }}
-            className="absolute top-3 right-3 p-2 bg-white border border-black rounded-full shadow-md hover:bg-black hover:text-white transition-all z-20"
+            // CHANGED: bg-white border-black/hover:bg-black/hover:text-white to theme variables
+            className="absolute top-3 right-3 p-2 bg-background border border-foreground rounded-full shadow-md hover:bg-foreground hover:text-background transition-all z-20"
             onClick={handleWishlistToggle}
             disabled={wishlistLoading}
           >
             <Heart 
               size={18} 
-              className={`transition-colors ${isWishlisted ? 'fill-black text-black hover:fill-white hover:text-white' : ''}`} 
+              // CHANGED: fill-black/text-black/hover:fill-white/hover:text-white to theme variables
+              className={`transition-colors ${isWishlisted ? 'fill-foreground text-foreground hover:fill-background hover:text-background' : ''}`} 
               strokeWidth={1.5}
             />
           </motion.button>
@@ -157,7 +163,8 @@ const ProductCard = ({ product, index }) => {
             initial={{ y: '100%' }}
             animate={{ y: isHovered ? 0 : '100%' }}
             transition={{ duration: 0.3 }}
-            className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-white/90 to-transparent z-20"
+            // CHANGED: from-white/90 to from-background/90
+            className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background/90 to-transparent z-20"
           >
             <Dialog open={quickAddOpen} onOpenChange={setQuickAddOpen}>
                 <DialogTrigger asChild>
@@ -170,7 +177,8 @@ const ProductCard = ({ product, index }) => {
                         }
                       }}
                       disabled={totalStock === 0}
-                      className="w-full py-3 bg-black text-white text-sm font-medium tracking-wide hover:bg-gray-800 transition-colors flex items-center justify-center gap-2 rounded-none"
+                      // Uses default variant (Vanilla Button)
+                      className="w-full py-3 text-sm font-medium tracking-wide transition-colors flex items-center justify-center gap-2 rounded-none"
                     >
                       <ShoppingCart size={16} />
                       {totalStock === 0 ? 'Out of Stock' : 'Quick Add'}
@@ -178,15 +186,18 @@ const ProductCard = ({ product, index }) => {
                 </DialogTrigger>
                 
                 {/* QUICK ADD MODAL CONTENT */}
-                <DialogContent className="max-w-xs sm:max-w-md bg-white rounded-none border-black">
+                <DialogContent 
+                  // CHANGED: bg-white/border-black to bg-background/border-foreground
+                  className="max-w-xs sm:max-w-md bg-background rounded-none border-foreground"
+                >
                     <DialogHeader>
-                        <DialogTitle className="playfair text-xl">{product.name}</DialogTitle>
+                        <DialogTitle className="playfair text-xl text-foreground">{product.name}</DialogTitle>
                     </DialogHeader>
                     
                     <div className="space-y-4">
                         {/* Color Selection */}
                         <div>
-                            <h3 className="text-sm font-bold uppercase tracking-wider mb-2 text-black">Color: <span className="font-normal text-gray-600">{selectedQuickVariant?.color}</span></h3>
+                            <h3 className="text-sm font-bold uppercase tracking-wider mb-2 text-foreground">Color: <span className="font-normal text-gray-600">{selectedQuickVariant?.color}</span></h3>
                             <div className="flex gap-3 flex-wrap">
                                 {product.variants?.map((variant, index) => (
                                     <button
@@ -196,7 +207,8 @@ const ProductCard = ({ product, index }) => {
                                             setSelectedQuickSize(''); // Reset size on variant change
                                         }}
                                         className={`relative w-8 h-8 rounded-full border transition-all ${
-                                            selectedQuickVariant?.color === variant.color ? 'ring-2 ring-black ring-offset-2 border-transparent' : 'border-gray-300 hover:border-black'
+                                            // CHANGED: ring-black/hover:border-black to ring-foreground/hover:border-foreground
+                                            selectedQuickVariant?.color === variant.color ? 'ring-2 ring-foreground ring-offset-2 border-transparent' : 'border-gray-300 hover:border-foreground'
                                         }`}
                                         style={{ backgroundColor: variant.color_code }}
                                         title={variant.color}
@@ -208,7 +220,7 @@ const ProductCard = ({ product, index }) => {
                         {/* Size Selection */}
                         {selectedQuickVariant && (
                             <div>
-                                <h3 className="text-sm font-bold uppercase tracking-wider mb-2 text-black">Select Size:</h3>
+                                <h3 className="text-sm font-bold uppercase tracking-wider mb-2 text-foreground">Select Size:</h3>
                                 <div className="grid grid-cols-4 gap-2">
                                     {Object.entries(selectedQuickVariant.sizes).map(([size, stock]) => (
                                         <button
@@ -217,10 +229,12 @@ const ProductCard = ({ product, index }) => {
                                             disabled={stock === 0}
                                             className={`min-w-10 h-10 border transition-all flex items-center justify-center text-sm ${
                                                 selectedQuickSize === size
-                                                    ? 'bg-black text-white border-black'
+                                                    // SELECTED: bg-foreground text-background (Brown fill, Vanilla text)
+                                                    ? 'bg-foreground text-background border-foreground'
                                                     : stock === 0
                                                     ? 'bg-gray-100 text-gray-300 border-transparent cursor-not-allowed decoration-slice line-through'
-                                                    : 'bg-white text-black border-gray-200 hover:border-black'
+                                                    // UNSELECTED: bg-background text-foreground (Vanilla bg, Brown text)
+                                                    : 'bg-background text-foreground border-gray-200 hover:border-foreground'
                                             }`}
                                         >
                                             {size}
@@ -245,7 +259,8 @@ const ProductCard = ({ product, index }) => {
                         <Button
                             onClick={handleQuickAdd}
                             disabled={!selectedQuickSize || currentStock === 0}
-                            className="w-full bg-black text-white hover:bg-gray-800 rounded-none py-3 mt-4"
+                            // Uses default variant (Vanilla Button)
+                            className="w-full rounded-none py-3 mt-4"
                         >
                             <ShoppingCart size={16} className="mr-2" /> Add to Cart
                         </Button>
@@ -257,7 +272,8 @@ const ProductCard = ({ product, index }) => {
         
         {/* Content */}
         <div className="p-3 sm:p-4" onClick={handleProductClick}>
-          <h3 className="text-base sm:text-lg font-medium mb-1 playfair text-black">
+          {/* text-foreground (Red-Brown) */}
+          <h3 className="text-base sm:text-lg font-medium mb-1 playfair text-foreground">
             {product.name}
           </h3>
           
@@ -269,8 +285,8 @@ const ProductCard = ({ product, index }) => {
                   ₹{product.mrp.toFixed(2)}
                 </span>
               )}
-              {/* Sale Price */}
-              <span className="text-base sm:text-lg font-semibold text-black">
+              {/* Sale Price (text-foreground - Red-Brown) */}
+              <span className="text-base sm:text-lg font-semibold text-foreground">
                 ₹{product.price.toFixed(2)}
               </span>
             </div>

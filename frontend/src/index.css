@@ -6,38 +6,38 @@
 
 @layer base {
   :root {
-    /* --- PREMIUM BLACK & WHITE THEME VARIABLES --- */
+    /* --- PREMIUM COFFEE & VANILLA THEME VARIABLES (Primary Inverted) --- */
     
     /* Backgrounds */
-    --background: 0 0% 100%;      /* Pure White */
-    --foreground: 0 0% 0%;        /* Pure Black */
+    --background: 40 100% 88%;      /* Vanilla #ffe7c2 (Website body background) */
+    --foreground: 26 39% 32%;        /* Coffee #6F4E37 (Website text, Navbar/Footer background) */
 
     /* Cards & Surfaces */
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 0%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 0%;
+    --card: 40 100% 88%;
+    --card-foreground: 26 39% 32%;
+    --popover: 40 100% 88%;
+    --popover-foreground: 26 39% 32%;
  
-    /* Primary Actions (Black Buttons) */
-    --primary: 0 0% 0%;
-    --primary-foreground: 0 0% 100%;
+    /* Primary Actions (Vanilla Buttons, Text is Coffee) */
+    --primary: 40 100% 88%;        /* Vanilla */
+    --primary-foreground: 26 39% 32%; /* Coffee */
  
-    /* Secondary/Muted (Light Grays) */
-    --secondary: 0 0% 96%;        /* Very light gray for hovers */
-    --secondary-foreground: 0 0% 0%;
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 40%; /* Medium Gray text */
+    /* Secondary/Muted (Lighter Vanilla shades) */
+    --secondary: 40 100% 92%;        
+    --secondary-foreground: 26 39% 32%;
+    --muted: 40 100% 92%;
+    --muted-foreground: 26 39% 50%; /* Medium Coffee text */
  
     /* Accents & Borders */
-    --accent: 0 0% 96%;
-    --accent-foreground: 0 0% 0%;
+    --accent: 40 100% 92%;
+    --accent-foreground: 26 39% 32%;
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 90%;           /* Light Gray border */
-    --input: 0 0% 90%;
-    --ring: 0 0% 0%;              /* Black focus ring */
+    --destructive-foreground: 40 100% 88%;
+    --border: 40 50% 80%;
+    --input: 40 50% 80%;
+    --ring: 26 39% 32%;              /* Coffee focus ring */
     
-    --radius: 0px; /* Sharp corners for premium feel, or 0.5rem for rounded */
+    --radius: 0px; 
   }
 }
 
@@ -64,7 +64,7 @@
   font-family: 'Alegreya SC', serif;
 }
 
-/* Premium Scrollbar */
+/* Premium Scrollbar - UPDATED FOR COFFEE */
 ::-webkit-scrollbar {
   width: 6px;
 }
@@ -72,12 +72,12 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #000000;
+  background: #6F4E37; /* Coffee */
   border-radius: 0px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #333333;
+  background: #5A3E2C; /* Darker Coffee */
 }
 footer input::placeholder {
-  color: #777;
+  color: #8C6A53; /* Medium Coffee */
 }

@@ -45,7 +45,8 @@ const Navbar = () => {
       }}
       animate={hidden ? "hidden" : "visible"}
       transition={{ duration: 0.35, ease: "easeInOut" }}
-      className="fixed top-0 left-0 right-0 z-50 border-b border-gray-200 bg-white/95 backdrop-blur-md h-20"
+      // Navbar Background is Red-Brown (bg-foreground)
+      className="fixed top-0 left-0 right-0 z-50 border-b border-gray-200 bg-foreground/95 backdrop-blur-md h-20"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full">
         <div className="flex justify-between items-center h-full relative">
@@ -54,14 +55,16 @@ const Navbar = () => {
           <div className="hidden md:flex items-center gap-6 flex-1 justify-start">
             <Link 
               to="/" 
-              className="px-4 py-2 transition-all duration-300 font-bold text-gray-800 hover:bg-black hover:text-white text-sm uppercase tracking-widest rounded-sm" 
+              // FIX: Changed text-primary-foreground to text-background (Vanilla) for visibility on brown background
+              // Hover remains hover:bg-background (Vanilla) hover:text-foreground (Red-Brown)
+              className="px-4 py-2 transition-all duration-300 font-bold text-background hover:bg-background hover:text-foreground text-sm uppercase tracking-widest rounded-sm" 
               data-testid="nav-home"
             >
               Home
             </Link>
             <Link 
               to="/products" 
-              className="px-4 py-2 transition-all duration-300 font-bold text-gray-800 hover:bg-black hover:text-white text-sm uppercase tracking-widest rounded-sm" 
+              className="px-4 py-2 transition-all duration-300 font-bold text-background hover:bg-background hover:text-foreground text-sm uppercase tracking-widest rounded-sm" 
               data-testid="nav-products"
             >
               Products
@@ -69,7 +72,7 @@ const Navbar = () => {
             {user && (
               <Link 
                 to="/orders" 
-                className="px-4 py-2 transition-all duration-300 font-bold text-gray-800 hover:bg-black hover:text-white text-sm uppercase tracking-widest rounded-sm" 
+                className="px-4 py-2 transition-all duration-300 font-bold text-background hover:bg-background hover:text-foreground text-sm uppercase tracking-widest rounded-sm" 
                 data-testid="nav-orders"
               >
                 Orders
@@ -86,7 +89,8 @@ const Navbar = () => {
                   className="h-16 w-auto object-contain hover:scale-105 transition-transform duration-300" 
                   onError={(e) => {
                     e.target.style.display = 'none';
-                    e.target.parentNode.innerHTML = '<h1 class="text-3xl font-bold playfair text-black tracking-tight">Fifth Beryl</h1>';
+                    // Text color remains correct (Vanilla) for visibility
+                    e.target.parentNode.innerHTML = '<h1 class="text-3xl font-bold playfair text-primary-foreground tracking-tight">Fifth Beryl</h1>';
                   }}
                 />
             </Link>
@@ -96,7 +100,8 @@ const Navbar = () => {
           <div className="md:hidden flex items-center justify-start flex-1">
             <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="p-2 text-black hover:bg-black hover:text-white transition-colors rounded-full"
+                // FIX: Changed text-primary-foreground to text-background (Vanilla)
+                className="p-2 text-background hover:bg-background hover:text-foreground transition-colors rounded-full"
                 data-testid="mobile-menu-btn"
             >
                 {mobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
@@ -109,12 +114,16 @@ const Navbar = () => {
             {/* Cart */}
             <button
               onClick={() => navigate('/cart')}
-              className="relative p-2 rounded-full transition-all duration-300 text-black hover:bg-black hover:text-white"
+              // FIX: Changed text-primary-foreground to text-background (Vanilla)
+              className="relative p-2 rounded-full transition-all duration-300 text-background hover:bg-background hover:text-foreground"
               data-testid="nav-cart-btn"
             >
               <ShoppingCart size={24} strokeWidth={1.5} />
               {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-black text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center border-2 border-white group-hover:border-black group-hover:bg-white group-hover:text-black">
+                <span 
+                  // Cart badge is already high contrast (Vanilla BG, Brown Text)
+                  className="absolute -top-1 -right-1 bg-background text-foreground text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center border-2 border-foreground group-hover:border-background group-hover:bg-foreground group-hover:text-background"
+                >
                   {cartCount}
                 </span>
               )}
@@ -125,35 +134,43 @@ const Navbar = () => {
                 {user ? (
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="rounded-full hover:bg-black hover:text-white transition-colors" data-testid="user-menu-btn">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      // FIX: Added text-background to ensure icon visibility
+                      className="rounded-full text-background hover:bg-background hover:text-foreground transition-colors" 
+                      data-testid="user-menu-btn"
+                    >
                         <Avatar className="h-9 w-9 border border-gray-200">
                         <AvatarImage src={null} alt={user.name || "Profile"} />
-                        <AvatarFallback className="bg-black text-white">
+                        {/* Avatar Fallback is high contrast (Vanilla BG, Brown Text) */}
+                        <AvatarFallback className="bg-background text-foreground">
                             <User size={18} />
                         </AvatarFallback>
                         </Avatar>
                     </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56 p-0 bg-white border border-gray-200 shadow-xl rounded-none mt-2">
+                    {/* Dropdown content background is Vanilla (bg-background) */}
+                    <DropdownMenuContent align="end" className="w-56 p-0 bg-background border border-gray-200 shadow-xl rounded-none mt-2">
                     <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
-                      <p className="text-sm font-medium text-black truncate">{user.name}</p>
+                      <p className="text-sm font-medium text-foreground truncate">{user.name}</p>
                       <p className="text-xs text-gray-500 truncate">{user.email}</p>
                     </div>
                     
-                    <DropdownMenuItem onClick={() => navigate('/profile')} className="cursor-pointer hover:bg-black hover:text-white rounded-none py-3 px-4 text-sm font-medium text-gray-700 transition-colors" data-testid="dropdown-profile">
+                    <DropdownMenuItem onClick={() => navigate('/profile')} className="cursor-pointer hover:bg-foreground hover:text-background rounded-none py-3 px-4 text-sm font-medium text-gray-700 transition-colors" data-testid="dropdown-profile">
                         My Profile
                     </DropdownMenuItem>
                     
-                    <DropdownMenuItem onClick={() => navigate('/wishlist')} className="cursor-pointer hover:bg-black hover:text-white rounded-none py-3 px-4 text-sm font-medium text-gray-700 transition-colors" data-testid="dropdown-wishlist">
+                    <DropdownMenuItem onClick={() => navigate('/wishlist')} className="cursor-pointer hover:bg-foreground hover:text-background rounded-none py-3 px-4 text-sm font-medium text-gray-700 transition-colors" data-testid="dropdown-wishlist">
                         My Wishlist
                     </DropdownMenuItem>
                     
-                    <DropdownMenuItem onClick={() => navigate('/orders')} className="cursor-pointer hover:bg-black hover:text-white rounded-none py-3 px-4 text-sm font-medium text-gray-700 transition-colors" data-testid="dropdown-orders">
+                    <DropdownMenuItem onClick={() => navigate('/orders')} className="cursor-pointer hover:bg-foreground hover:text-background rounded-none py-3 px-4 text-sm font-medium text-gray-700 transition-colors" data-testid="dropdown-orders">
                         My Orders
                     </DropdownMenuItem>
                     
                     {isAdmin && (
-                        <DropdownMenuItem onClick={() => navigate('/admin')} className="cursor-pointer hover:bg-black hover:text-white rounded-none py-3 px-4 text-sm font-medium text-black bg-gray-50 transition-colors" data-testid="dropdown-admin">
+                        <DropdownMenuItem onClick={() => navigate('/admin')} className="cursor-pointer hover:bg-foreground hover:text-background rounded-none py-3 px-4 text-sm font-medium text-foreground bg-gray-50 transition-colors" data-testid="dropdown-admin">
                         Admin Panel
                         </DropdownMenuItem>
                     )}
@@ -167,7 +184,8 @@ const Navbar = () => {
                 ) : (
                 <Button 
                     onClick={() => navigate('/login')} 
-                    className="bg-black hover:bg-gray-800 text-white rounded-none px-6 text-sm uppercase tracking-wide font-medium h-10" 
+                    // This uses the default variant (Vanilla Button, Brown Text), which is correct for visibility
+                    className="rounded-none px-6 text-sm uppercase tracking-wide font-medium h-10" 
                     data-testid="signin-btn"
                 >
                     Sign In
@@ -186,26 +204,41 @@ const Navbar = () => {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden border-t border-gray-200 bg-white absolute w-full left-0 top-20 shadow-xl z-40"
+            className="md:hidden border-t border-gray-200 bg-background absolute w-full left-0 top-20 shadow-xl z-40"
             data-testid="mobile-menu"
           >
-            <div className="px-6 py-8 space-y-6 h-screen bg-white">
+            <div className="px-6 py-8 space-y-6 h-screen bg-background">
               <div className="space-y-6">
-                  <Link to="/" className="block text-2xl font-medium text-black hover:text-white hover:bg-black px-4 py-2 transition-colors playfair border-b border-gray-100" onClick={() => setMobileMenuOpen(false)}>
+                  <Link 
+                    to="/" 
+                    className="block text-2xl font-medium text-foreground hover:text-background hover:bg-foreground px-4 py-2 transition-colors playfair border-b border-gray-100" 
+                    onClick={() => setMobileMenuOpen(false)}>
                     Home
                   </Link>
-                  <Link to="/products" className="block text-2xl font-medium text-black hover:text-white hover:bg-black px-4 py-2 transition-colors playfair border-b border-gray-100" onClick={() => setMobileMenuOpen(false)}>
+                  <Link 
+                    to="/products" 
+                    className="block text-2xl font-medium text-foreground hover:text-background hover:bg-foreground px-4 py-2 transition-colors playfair border-b border-gray-100" 
+                    onClick={() => setMobileMenuOpen(false)}>
                     Products
                   </Link>
                   {user && (
                     <>
-                        <Link to="/orders" className="block text-2xl font-medium text-black hover:text-white hover:bg-black px-4 py-2 transition-colors playfair border-b border-gray-100" onClick={() => setMobileMenuOpen(false)}>
+                        <Link 
+                          to="/orders" 
+                          className="block text-2xl font-medium text-foreground hover:text-background hover:bg-foreground px-4 py-2 transition-colors playfair border-b border-gray-100" 
+                          onClick={() => setMobileMenuOpen(false)}>
                         Orders
                         </Link>
-                        <Link to="/profile" className="block text-2xl font-medium text-black hover:text-white hover:bg-black px-4 py-2 transition-colors playfair border-b border-gray-100" onClick={() => setMobileMenuOpen(false)}>
+                        <Link 
+                          to="/profile" 
+                          className="block text-2xl font-medium text-foreground hover:text-background hover:bg-foreground px-4 py-2 transition-colors playfair border-b border-gray-100" 
+                          onClick={() => setMobileMenuOpen(false)}>
                         Profile
                         </Link>
-                        <Link to="/wishlist" className="block text-2xl font-medium text-black hover:text-white hover:bg-black px-4 py-2 transition-colors playfair border-b border-gray-100" onClick={() => setMobileMenuOpen(false)}>
+                        <Link 
+                          to="/wishlist" 
+                          className="block text-2xl font-medium text-foreground hover:text-background hover:bg-foreground px-4 py-2 transition-colors playfair border-b border-gray-100" 
+                          onClick={() => setMobileMenuOpen(false)}>
                         Wishlist
                         </Link>
                     </>
@@ -216,16 +249,21 @@ const Navbar = () => {
                 {user ? (
                     <>
                     {isAdmin && (
-                        <Link to="/admin" className="block text-lg font-medium text-black mb-6 bg-gray-50 p-4 text-center border border-black hover:bg-black hover:text-white transition-colors" onClick={() => setMobileMenuOpen(false)}>
+                        <Link 
+                          to="/admin" 
+                          className="block text-lg font-medium text-foreground mb-6 bg-gray-50 p-4 text-center border border-foreground hover:bg-foreground hover:text-background transition-colors" 
+                          onClick={() => setMobileMenuOpen(false)}>
                         Admin Panel
                         </Link>
                     )}
-                    <button onClick={() => { signOut(); setMobileMenuOpen(false); }} className="w-full text-lg font-medium text-red-600 py-4 border border-red-200 bg-red-50 hover:bg-red-600 hover:text-white transition-colors">
+                    <button onClick={() => { signOut(); setMobileMenuOpen(false); }} className="w-full text-lg font-medium text-red-600 py-4 border border-red-200 bg-red-50 hover:bg-red-600 hover:text-primary-foreground transition-colors">
                         Sign Out
                     </button>
                     </>
                 ) : (
-                    <button onClick={() => { navigate('/login'); setMobileMenuOpen(false); }} className="w-full bg-black text-white py-4 text-lg font-medium uppercase tracking-wider hover:bg-gray-800">
+                    <button onClick={() => { navigate('/login'); setMobileMenuOpen(false); }} 
+                      // Uses default variant (Vanilla Button, Brown Text), which is correct for visibility
+                      className="w-full bg-primary text-primary-foreground py-4 text-lg font-medium uppercase tracking-wider hover:bg-primary/90">
                     Sign In
                     </button>
                 )}

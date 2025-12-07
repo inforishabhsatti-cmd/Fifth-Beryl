@@ -4,7 +4,8 @@ import { FaInstagram, FaFacebookF, FaTwitter, FaEnvelope } from "react-icons/fa"
 
 const Footer = () => {
   return (
-    <footer className="bg-black text-white pt-16 pb-8 mt-10 border-t border-gray-700">
+    // CHANGED: bg-black/text-white to bg-foreground/text-background (Brown Footer, Vanilla Text)
+    <footer className="bg-foreground text-background pt-16 pb-8 mt-10 border-t border-gray-700">
       <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-4 gap-10">
 
         {/* Brand + About */}
@@ -13,7 +14,8 @@ const Footer = () => {
           <p className="text-gray-400 mb-4">
             Redefining luxury with crafted premium shirts — made for the bold.
           </p>
-          <div className="flex space-x-4 text-xl">
+          {/* CHANGED: text-xl (implicitly text-background on brown) */}
+          <div className="flex space-x-4 text-xl text-background">
             <a href="#" className="hover:text-gray-300"><FaInstagram /></a>
             <a href="#" className="hover:text-gray-300"><FaFacebookF /></a>
             <a href="#" className="hover:text-gray-300"><FaTwitter /></a>
@@ -52,10 +54,14 @@ const Footer = () => {
           <div className="flex">
             <input
               type="email"
-              className="flex-1 px-4 py-2 text-black"
+              // CHANGED: text-black to text-foreground (Red-Brown)
+              className="flex-1 px-4 py-2 text-foreground bg-background"
               placeholder="Your email"
             />
-            <button className="bg-white text-black px-4 py-2 font-medium hover:bg-gray-200">
+            <button 
+              // CHANGED: bg-white/text-black to bg-primary/text-primary-foreground (Vanilla Button)
+              className="bg-primary text-primary-foreground px-4 py-2 font-medium hover:bg-primary/90"
+            >
               SUBSCRIBE
             </button>
           </div>

@@ -28,28 +28,33 @@ const sizeChartData = {
 const SizeChartDialog = () => (
     <Dialog>
         <DialogTrigger asChild>
-            <Button variant="link" className="text-sm font-semibold p-0 text-gray-500 hover:text-white transition-colors h-auto flex items-center gap-1">
+            {/* CHANGED: text-gray-500/hover:text-white to theme variables */}
+            <Button variant="link" className="text-sm font-semibold p-0 text-foreground/70 hover:text-primary transition-colors h-auto flex items-center gap-1">
                 <Ruler size={14} /> Size Guide 
             </Button>
         </DialogTrigger>
-        <DialogContent className="max-w-lg bg-white rounded-none border-black">
+        {/* CHANGED: bg-white/border-black to bg-background/border-foreground */}
+        <DialogContent className="max-w-lg bg-background rounded-none border-foreground">
             <DialogHeader>
-                <DialogTitle className="playfair text-2xl text-black">Shirt Size Chart ({sizeChartData.units})</DialogTitle>
+                {/* CHANGED: text-black to text-foreground */}
+                <DialogTitle className="playfair text-2xl text-foreground">Shirt Size Chart ({sizeChartData.units})</DialogTitle>
             </DialogHeader>
             <p className="text-sm text-gray-600 mb-4">Measurements are garment dimensions, not body size.</p>
             <Table className="border border-gray-200">
+                {/* CHANGED: text-black to text-foreground */}
                 <TableHeader className="bg-gray-100">
                     <TableRow>
-                        <TableHead className="font-bold text-black uppercase">Size</TableHead>
-                        <TableHead className="font-bold text-black uppercase">Chest (in)</TableHead>
-                        <TableHead className="font-bold text-black uppercase">Length (in)</TableHead>
-                        <TableHead className="font-bold text-black uppercase">Shoulder (in)</TableHead>
+                        <TableHead className="font-bold text-foreground uppercase">Size</TableHead>
+                        <TableHead className="font-bold text-foreground uppercase">Chest (in)</TableHead>
+                        <TableHead className="font-bold text-foreground uppercase">Length (in)</TableHead>
+                        <TableHead className="font-bold text-foreground uppercase">Shoulder (in)</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {sizeChartData.sizes.map((row) => (
                         <TableRow key={row.size} className="hover:bg-gray-50">
-                            <TableCell className="font-medium text-black">{row.size}</TableCell>
+                            {/* CHANGED: text-black to text-foreground */}
+                            <TableCell className="font-medium text-foreground">{row.size}</TableCell>
                             <TableCell>{row.chest}</TableCell>
                             <TableCell>{row.length}</TableCell>
                             <TableCell>{row.shoulder}</TableCell>
@@ -163,8 +168,9 @@ const ProductDetailPage = () => {
   const displayImages = product?.images || [];
 
   if (loading) {
+    // CHANGED: bg-white to bg-background
     return (
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-background">
         <Navbar />
         <div className="flex justify-center items-center py-40">
           <div className="spinner" />
@@ -174,12 +180,15 @@ const ProductDetailPage = () => {
   }
 
   if (!product) {
+    // CHANGED: bg-white to bg-background
     return (
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-background">
         <Navbar />
         <div className="text-center py-40">
-          <h2 className="text-2xl font-bold text-black">Product not found</h2>
-          <Button onClick={() => navigate('/products')} className="mt-4 bg-black text-white">Back to Products</Button>
+          {/* CHANGED: text-black to text-foreground */}
+          <h2 className="text-2xl font-bold text-foreground">Product not found</h2>
+          {/* CHANGED: bg-black/text-white to bg-primary/text-primary-foreground (Vanilla Button) */}
+          <Button onClick={() => navigate('/products')} className="mt-4 bg-primary text-primary-foreground">Back to Products</Button>
         </div>
       </div>
     );
@@ -201,7 +210,8 @@ const ProductDetailPage = () => {
   
 
   return (
-    <div className="min-h-screen bg-black text-white pt-32">
+    // CHANGED: bg-black/text-white to bg-background/text-foreground
+    <div className="min-h-screen bg-background text-foreground pt-32">
       
       <Helmet>
         <title>{product.name} | Fifth Beryl</title>
@@ -214,7 +224,8 @@ const ProductDetailPage = () => {
       
       <Navbar />
       
-      <div className="bg-black pb-20"> 
+      {/* CHANGED: bg-black to bg-background */}
+      <div className="bg-background pb-20"> 
           
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
@@ -224,7 +235,8 @@ const ProductDetailPage = () => {
                 <motion.div
                   initial={{ opacity: 0, x: -30 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className="bg-white text-black border border-gray-100 overflow-hidden mb-4 aspect-[4/5] p-4 shadow-xl group relative"
+                  // CHANGED: bg-white/text-black to bg-background/text-foreground
+                  className="bg-background text-foreground border border-gray-100 overflow-hidden mb-4 aspect-[4/5] p-4 shadow-xl group relative"
                 >
                   
                   {/* Media Display: Video or Image */}
@@ -252,7 +264,10 @@ const ProductDetailPage = () => {
                   
                   {/* Zoom instruction overlay for desktop */}
                   {!isVideo && (
-                    <div className="absolute bottom-4 right-4 bg-black/70 text-white text-xs px-2 py-1 hidden lg:block pointer-events-none">
+                    <div 
+                      // CHANGED: bg-black/70/text-white to bg-foreground/70/text-background
+                      className="absolute bottom-4 right-4 bg-foreground/70 text-background text-xs px-2 py-1 hidden lg:block pointer-events-none"
+                    >
                         Hover to Zoom
                     </div>
                   )}
@@ -266,7 +281,8 @@ const ProductDetailPage = () => {
                       key={index}
                       onClick={() => setSelectedImage(index)}
                       className={`aspect-square overflow-hidden border bg-gray-200 ${
-                        selectedImage === index ? 'border-white ring-2 ring-white ring-offset-2 ring-offset-black' : 'border-transparent'
+                        // CHANGED: border-white/ring-white/ring-offset-black to border-foreground/ring-foreground/ring-offset-background
+                        selectedImage === index ? 'border-foreground ring-2 ring-foreground ring-offset-2 ring-offset-background' : 'border-transparent'
                       }`}
                       data-testid={`thumbnail-${index}`}
                     >
@@ -286,14 +302,17 @@ const ProductDetailPage = () => {
                 animate={{ opacity: 1, x: 0 }}
                 className="pt-4 p-8 lg:p-0" 
               >
-                <h1 className="text-4xl font-bold mb-4 playfair text-white" data-testid="product-name">{product.name}</h1>
+                {/* CHANGED: text-white to text-foreground */}
+                <h1 className="text-4xl font-bold mb-4 playfair text-foreground" data-testid="product-name">{product.name}</h1>
                 
                 {/* Fit and Rating Row */}
                 <div className="flex items-center justify-between gap-4 mb-4">
                     {/* ADDED: Fit Visualization */}
                     <div className="flex items-center gap-2 text-gray-400">
-                        <Shirt size={18} className="text-white" />
-                        <span className="text-sm font-semibold uppercase tracking-wider text-white">{product.fit}</span>
+                        {/* CHANGED: text-white to text-foreground */}
+                        <Shirt size={18} className="text-foreground" />
+                        {/* CHANGED: text-white to text-foreground */}
+                        <span className="text-sm font-semibold uppercase tracking-wider text-foreground">{product.fit}</span>
                     </div>
 
                     {/* Ratings */}
@@ -315,7 +334,8 @@ const ProductDetailPage = () => {
 
                 {/* Price display */}
                 <div className="flex items-baseline gap-4 mb-6 border-b border-gray-800 pb-4">
-                    <p className="text-3xl font-medium text-white" data-testid="product-price">
+                    {/* CHANGED: text-white to text-foreground */}
+                    <p className="text-3xl font-medium text-foreground" data-testid="product-price">
                         ₹{product.price.toFixed(2)}
                     </p>
                     {product.mrp && product.mrp > product.price && (
@@ -336,7 +356,8 @@ const ProductDetailPage = () => {
 
                 {/* Color Selection */}
                 <div className="mb-8">
-                  <h3 className="text-sm font-bold uppercase tracking-wider mb-4 text-white">Color: <span className="font-normal text-gray-400">{selectedVariant?.color}</span></h3>
+                  {/* CHANGED: text-white to text-foreground */}
+                  <h3 className="text-sm font-bold uppercase tracking-wider mb-4 text-foreground">Color: <span className="font-normal text-gray-400">{selectedVariant?.color}</span></h3>
                   <div className="flex gap-4 flex-wrap">
                     {product.variants?.map((variant, index) => (
                       <button
@@ -347,7 +368,8 @@ const ProductDetailPage = () => {
                           setSelectedImage(0); // FIX: Reset image index to 0 when changing color
                         }}
                         className={`relative w-10 h-10 rounded-full border transition-all ${
-                          selectedVariant?.color === variant.color ? 'ring-2 ring-white ring-offset-2 ring-offset-black border-transparent' : 'border-gray-700 hover:border-white'
+                          // CHANGED: ring-white/ring-offset-black/hover:border-white to ring-foreground/ring-offset-background/hover:border-foreground
+                          selectedVariant?.color === variant.color ? 'ring-2 ring-foreground ring-offset-2 ring-offset-background border-transparent' : 'border-gray-700 hover:border-foreground'
                         }`}
                         style={{ backgroundColor: variant.color_code }}
                         data-testid={`color-${index}`}
@@ -361,7 +383,8 @@ const ProductDetailPage = () => {
                   <div className="mb-10">
                     {/* ADDED: Size Guide button */}
                     <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-sm font-bold uppercase tracking-wider text-white">Size: <span className="font-normal text-gray-400">{selectedSize}</span></h3>
+                        {/* CHANGED: text-white to text-foreground */}
+                        <h3 className="text-sm font-bold uppercase tracking-wider text-foreground">Size: <span className="font-normal text-gray-400">{selectedSize}</span></h3>
                         <SizeChartDialog /> 
                     </div>
                     
@@ -373,10 +396,12 @@ const ProductDetailPage = () => {
                           disabled={stock === 0}
                           className={`min-w-[3rem] h-12 px-4 border transition-all flex items-center justify-center ${
                             selectedSize === size
-                              ? 'bg-white text-black border-white'
+                              // SELECTED: bg-foreground text-background border-foreground (Brown fill, Vanilla text)
+                              ? 'bg-foreground text-background border-foreground'
                               : stock === 0
                               ? 'bg-gray-800 text-gray-600 border-transparent cursor-not-allowed decoration-slice line-through'
-                              : 'bg-black text-white border-gray-700 hover:border-white'
+                              // UNSELECTED: bg-background text-foreground (Vanilla bg, Brown text)
+                              : 'bg-background text-foreground border-gray-700 hover:border-foreground'
                           }`}
                           data-testid={`size-${size}`}
                         >
@@ -393,7 +418,8 @@ const ProductDetailPage = () => {
                 {/* Add to Cart */}
                 <Button
                   onClick={handleAddToCart}
-                  className="w-full bg-white hover:bg-gray-100 text-black py-7 text-lg rounded-none font-medium tracking-wide"
+                  // Uses default variant: bg-primary (Vanilla) text-primary-foreground (Red-Brown)
+                  className="w-full py-7 text-lg rounded-none font-medium tracking-wide"
                   data-testid="add-to-cart-btn"
                 >
                   <ShoppingCart className="mr-3" size={20} />
@@ -404,11 +430,14 @@ const ProductDetailPage = () => {
 
             {/* Reviews Section */}
             <div className="mt-24 border-t border-gray-800 pt-16">
-              <h2 className="text-3xl font-bold mb-10 playfair text-center text-white">Customer Reviews</h2>
+              {/* CHANGED: text-white to text-foreground */}
+              <h2 className="text-3xl font-bold mb-10 playfair text-center text-foreground">Customer Reviews</h2>
               
               {user && (
-                <div className="bg-gray-900 p-8 mb-12 max-w-2xl mx-auto shadow-md">
-                  <h3 className="font-bold mb-4 text-lg text-white">Write a Review</h3>
+                // CHANGED: bg-gray-900 to bg-secondary
+                <div className="bg-secondary p-8 mb-12 max-w-2xl mx-auto shadow-md">
+                  {/* CHANGED: text-white to text-foreground */}
+                  <h3 className="font-bold mb-4 text-lg text-foreground">Write a Review</h3>
                   <div className="flex gap-2 mb-6">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <button
@@ -427,10 +456,12 @@ const ProductDetailPage = () => {
                     placeholder="Share your experience..."
                     value={newReview.comment}
                     onChange={(e) => setNewReview({ ...newReview, comment: e.target.value })}
-                    className="mb-4 bg-black text-white border-gray-700 focus:border-white rounded-none"
+                    // CHANGED: bg-black/text-white/focus:border-white to bg-background/text-foreground/focus:border-foreground
+                    className="mb-4 bg-background text-foreground border-gray-700 focus:border-foreground rounded-none"
                     data-testid="review-comment"
                   />
-                  <Button onClick={handleSubmitReview} className="bg-white text-black hover:bg-gray-100 rounded-none" data-testid="submit-review-btn">Submit Review</Button>
+                  {/* Uses default variant (Vanilla Button) */}
+                  <Button onClick={handleSubmitReview} className="rounded-none" data-testid="submit-review-btn">Submit Review</Button>
                 </div>
               )}
 
@@ -441,7 +472,8 @@ const ProductDetailPage = () => {
                     reviews.map((review, index) => (
                       <div key={review.id} className="border-b border-gray-800 pb-8 last:border-0" data-testid={`review-${index}`}>
                         <div className="flex items-center justify-between mb-3">
-                          <span className="font-bold text-lg text-white">{review.user_name}</span>
+                          {/* CHANGED: text-white to text-foreground */}
+                          <span className="font-bold text-lg text-foreground">{review.user_name}</span>
                           <div className="flex">
                             {[1, 2, 3, 4, 5].map((star) => (
                               <Star
@@ -462,7 +494,8 @@ const ProductDetailPage = () => {
             {/* NEW SECTION: Product Recommendations */}
             {recommendations.length > 0 && (
                 <div className="mt-24 border-t border-gray-800 pt-16">
-                    <h2 className="text-3xl font-bold mb-10 playfair text-center text-white">Customers Also Bought</h2>
+                    {/* CHANGED: text-white to text-foreground */}
+                    <h2 className="text-3xl font-bold mb-10 playfair text-center text-foreground">Customers Also Bought</h2>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                         {recommendations.map((recProduct, index) => (
                             <ProductCard key={recProduct.id} product={recProduct} index={index} />
