@@ -3,12 +3,24 @@
 /* Prevent horizontal scrolling */
 body {
   overflow-x: hidden;
-  background-color: #ffffff;
+  background-color: hsl(var(--background)); /* Cream */
+  color: hsl(var(--foreground)); /* Dark Grey */
 }
 
-/* Gradient Text: Clean Black Gradient */
+/* Force Navbar and Footer to be Taupe */
+nav, header, footer {
+  background-color: hsl(var(--header-bg)) !important;
+  color: hsl(var(--header-foreground)) !important;
+}
+
+/* Ensure links in header/footer are visible (White/Cream) */
+nav a, footer a, nav button, footer button {
+  color: hsl(var(--header-foreground));
+}
+
+/* Gradient Text: Adjusted for Dark Grey */
 .gradient-text {
-  background: linear-gradient(135deg, #000000 0%, #333333 100%);
+  background: linear-gradient(135deg, #1B2631 0%, #4A4A4A 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -16,24 +28,28 @@ body {
 
 /* ======================= BUTTONS ======================= */
 
-/* Primary Button */
+/* Primary Button - Deep Navy */
 .btn-primary {
-  @apply bg-black text-white px-8 py-3 font-medium transition-all duration-300;
-  border: 1px solid black;
+  /* Using Tailwind variables defined in index.css */
+  @apply bg-primary text-primary-foreground px-8 py-3 font-medium transition-all duration-300;
+  border: 1px solid hsl(var(--primary));
   border-radius: 0;
   letter-spacing: 0.5px;
   position: relative;
   overflow: hidden;
 }
 .btn-primary:hover {
-  @apply bg-gray-900 transform -translate-y-0.5 shadow-lg;
+  /* Slightly lighter navy for hover */
+  background-color: #2C3E50; 
+  border-color: #2C3E50;
+  @apply transform -translate-y-0.5 shadow-lg;
 }
 
-/* Secondary Button – Shutter hover effect */
+/* Secondary Button – Navy outlines */
 .btn-secondary {
   @apply bg-transparent px-8 py-3 font-medium;
-  color: black;
-  border: 1px solid black;
+  color: hsl(var(--primary)); /* Navy Text */
+  border: 1px solid hsl(var(--primary)); /* Navy Border */
   border-radius: 0;
   letter-spacing: 0.5px;
   position: relative;
@@ -46,13 +62,13 @@ body {
   position: absolute;
   inset: 0;
   width: 0;
-  background-color: black;
+  background-color: hsl(var(--primary)); /* Navy Fill */
   transition: width 0.3s ease;
   z-index: -1;
 }
 .btn-secondary:hover {
   @apply transform -translate-y-0.5 shadow-lg;
-  border-color: black;
+  border-color: hsl(var(--primary));
   color: white;
 }
 .btn-secondary:hover::after {
@@ -61,24 +77,24 @@ body {
 
 /* ======================= CARDS ======================= */
 .card {
-  @apply bg-white p-6 transition-all duration-300;
-  border: 1px solid #f3f4f6;
+  @apply bg-card text-card-foreground p-6 transition-all duration-300;
+  border: 1px solid hsl(var(--border));
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
 }
 .card:hover {
-  border-color: #e5e7eb;
+  border-color: hsl(var(--primary) / 0.2);
   box-shadow: 0 15px 30px rgba(0, 0, 0, 0.08);
 }
 
-/* Glass UI */
+/* Glass UI - Adjusted for Cream tint */
 .glass {
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(250, 249, 246, 0.85); /* Cream with opacity */
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(0,0,0,0.1);
+  border: 1px solid rgba(139, 133, 128, 0.2); /* Taupe border */
   border-radius: 8px;
   padding: 2.5rem;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.05);
 }
 
 /* ======================= LOADER ======================= */
@@ -86,7 +102,7 @@ body {
   width: 32px;
   height: 32px;
   border: 3px solid #e7e7e7;
-  border-top: 3px solid black;
+  border-top: 3px solid hsl(var(--primary)); /* Navy Spinner */
   border-radius: 50%;
   animation: spin .75s linear infinite;
 }
@@ -118,7 +134,7 @@ body {
   width: 100vw;
   height: 100vh;
   z-index: 9999;
-  background-color: black;
+  background-color: hsl(var(--primary)); /* Navy Shutter */
   transition: opacity 0.45s ease-out;
 }
 .shutter-glass-container.shutter-fade-out {
@@ -129,7 +145,7 @@ body {
 .shutter-slide-up {
   position: absolute;
   inset: 0;
-  background-color: white;
+  background-color: hsl(var(--background)); /* Cream Background */
   display: flex;
   justify-content: center;
   align-items: center;

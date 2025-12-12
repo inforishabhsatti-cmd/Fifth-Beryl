@@ -6,36 +6,48 @@
 
 @layer base {
   :root {
-    /* --- PREMIUM COFFEE & VANILLA THEME VARIABLES (Primary Inverted) --- */
+    /* --- SOFT LUXURY THEME VARIABLES --- */
     
+    /* Palette:
+       Background: Cream (#FAF9F6) -> 45 29% 97%
+       Text: Dark Brown/Grey (#4A4A4A) -> 0 0% 29%
+       Header/Footer: Taupe (#8B8580) -> 30 6% 53%
+       Buttons/Accent: Deep Navy (#1B2631) -> 210 29% 15%
+    */
+
     /* Backgrounds */
-    --background: 40 100% 88%;      /* Vanilla #ffe7c2 (Website body background) */
-    --foreground: 26 39% 32%;        /* Coffee #6F4E37 (Website text, Navbar/Footer background) */
+    --background: 45 29% 97%;       /* Cream / Alabaster */
+    --foreground: 0 0% 29%;         /* Dark Grey (Main Text) */
+
+    /* Header & Footer specific background variable */
+    --header-bg: 30 6% 53%;         /* Taupe / Greige */
+    --header-foreground: 45 29% 97%; /* Cream text on Header */
 
     /* Cards & Surfaces */
-    --card: 40 100% 88%;
-    --card-foreground: 26 39% 32%;
-    --popover: 40 100% 88%;
-    --popover-foreground: 26 39% 32%;
+    --card: 0 0% 100%;              /* Pure White for clean contrast */
+    --card-foreground: 0 0% 29%;    /* Dark Grey text */
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 29%;
  
-    /* Primary Actions (Vanilla Buttons, Text is Coffee) */
-    --primary: 40 100% 88%;        /* Vanilla */
-    --primary-foreground: 26 39% 32%; /* Coffee */
+    /* Primary Actions (Deep Navy Buttons) */
+    --primary: 210 29% 15%;         /* Deep Navy Blue */
+    --primary-foreground: 0 0% 100%; /* White text on buttons */
  
-    /* Secondary/Muted (Lighter Vanilla shades) */
-    --secondary: 40 100% 92%;        
-    --secondary-foreground: 26 39% 32%;
-    --muted: 40 100% 92%;
-    --muted-foreground: 26 39% 50%; /* Medium Coffee text */
+    /* Secondary/Muted */
+    --secondary: 30 6% 53%;         /* Taupe (can be used for secondary tags) */
+    --secondary-foreground: 0 0% 100%;
+    --muted: 45 10% 90%;            /* Light Grey/Cream for muted areas */
+    --muted-foreground: 0 0% 40%;   /* Lighter Grey text */
  
     /* Accents & Borders */
-    --accent: 40 100% 92%;
-    --accent-foreground: 26 39% 32%;
+    --accent: 45 29% 90%;           /* Slightly darker cream for hovers */
+    --accent-foreground: 210 29% 15%;
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 40 100% 88%;
-    --border: 40 50% 80%;
-    --input: 40 50% 80%;
-    --ring: 26 39% 32%;              /* Coffee focus ring */
+    --destructive-foreground: 0 0% 100%;
+    
+    --border: 30 6% 85%;            /* Light Taupe border */
+    --input: 30 6% 85%;
+    --ring: 210 29% 15%;            /* Navy focus ring */
     
     --radius: 0px; 
   }
@@ -51,6 +63,7 @@
   }
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Playfair Display', serif;
+    color: hsl(var(--foreground));
   }
 }
 
@@ -59,12 +72,11 @@
   font-family: 'Playfair Display', serif;
 }
 
-/* NEW: Custom font for the shutter title */
 .font-alegreya-sc {
   font-family: 'Alegreya SC', serif;
 }
 
-/* Premium Scrollbar - UPDATED FOR COFFEE */
+/* Premium Scrollbar - Taupe */
 ::-webkit-scrollbar {
   width: 6px;
 }
@@ -72,12 +84,12 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #6F4E37; /* Coffee */
+  background: #8B8580; /* Taupe */
   border-radius: 0px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #5A3E2C; /* Darker Coffee */
+  background: #6D6864; /* Darker Taupe */
 }
 footer input::placeholder {
-  color: #8C6A53; /* Medium Coffee */
+  color: #D1CEC7; /* Light Taupe */
 }

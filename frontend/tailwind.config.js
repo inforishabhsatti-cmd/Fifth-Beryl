@@ -15,6 +15,11 @@ module.exports = {
   		colors: {
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
+            /* Added custom header color */
+            header: {
+                DEFAULT: 'hsl(var(--header-bg))',
+                foreground: 'hsl(var(--header-foreground))'
+            },
   			card: {
   				DEFAULT: 'hsl(var(--card))',
   				foreground: 'hsl(var(--card-foreground))'

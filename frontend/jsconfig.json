@@ -2,15 +2,12 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "src/*"
-      ]
-    }
+      "@/*": ["src/*"]
+    },
+    "target": "es6",
+    "module": "esnext",
+    "jsx": "react-jsx"
   },
-  "include": [
-    "src"
-  ],
-  "typeAcquisition": {
-    "enable": false
-  }
+  "include": ["src"],
+  "exclude": ["node_modules", "build", "dist"]
 }
